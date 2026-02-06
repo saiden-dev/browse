@@ -1,0 +1,45 @@
+{
+  "name": "@aladac/claude-browse",
+  "version": "0.1.0",
+  "description": "Headless browser automation for Claude Code using Playwright WebKit",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "claude-browse": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/cli.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "playwright",
+    "webkit",
+    "browser",
+    "automation",
+    "claude",
+    "headless"
+  ],
+  "author": "aladac",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aladac/claude-browse"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "playwright": "^1.41.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ]
+}

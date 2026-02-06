@@ -1,0 +1,136 @@
+# @aladac/claude-browse
+
+Headless browser automation for Claude Code using Playwright WebKit.
+
+## Installation
+
+```bash
+npm install @aladac/claude-browse
+npx playwright install webkit
+```
+
+## CLI Usage
+
+```bash
+# Take a screenshot
+claude-browse https://example.com
+
+# Custom viewport and output
+claude-browse -o page.png -w 1920 -h 1080 https://example.com
+
+# Query elements
+claude-browse -q "a[href]" https://example.com
+claude-browse -q "img" -j https://example.com  # JSON output
+
+# Click and interact
+claude-browse -c "button.submit" https://example.com
+claude-browse -t "input[name=q]=hello" -c "button[type=submit]" https://google.com
+
+# Chain actions
+claude-browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
+
+# Interactive mode (visible browser)
+claude-browse -i --headed https://example.com
+```
+
+## Server Mode
+
+Start a persistent browser server that accepts commands via HTTP:
+
+```bash
+claude-browse -s 3000           # headless
+claude-browse -s 3000 --headed  # visible browser
+```
+
+Send commands:
+
+```bash
+# Navigate
+curl -X POST localhost:3000 -d '{"cmd":"goto","url":"https://example.com"}'
+
+# Click
+curl -X POST localhost:3000 -d '{"cmd":"click","selector":"button.submit"}'
+
+# Type
+curl -X POST localhost:3000 -d '{"cmd":"type","selector":"#search","text":"hello"}'
+
+# Query elements
+curl -X POST localhost:3000 -d '{"cmd":"query","selector":"a[href]"}'
+
+# Screenshot
+curl -X POST localhost:3000 -d '{"cmd":"screenshot","path":"page.png"}'
+
+# Get current URL
+curl -X POST localhost:3000 -d '{"cmd":"url"}'
+
+# Get page HTML
+curl -X POST localhost:3000 -d '{"cmd":"html"}'
+
+# Navigation
+curl -X POST localhost:3000 -d '{"cmd":"back"}'
+curl -X POST localhost:3000 -d '{"cmd":"forward"}'
+curl -X POST localhost:3000 -d '{"cmd":"reload"}'
+
+# Wait
+curl -X POST localhost:3000 -d '{"cmd":"wait","ms":2000}'
+
+# Close server
+curl -X POST localhost:3000 -d '{"cmd":"close"}'
+```
+
+## Programmatic Usage
+
+```typescript
+import { ClaudeBrowser, startServer } from '@aladac/claude-browse';
+
+// Direct browser control
+const browser = new ClaudeBrowser({
+  headless: true,
+  width: 1280,
+  height: 800,
+});
+
+await browser.launch();
+await browser.goto('https://example.com');
+
+const elements = await browser.query('a[href]');
+console.log(elements);
+
+await browser.click('button.submit');
+await browser.type('#input', 'hello');
+await browser.screenshot('page.png');
+
+await browser.close();
+
+// Or start a server
+const server = await startServer({ port: 3000, headless: false });
+// Server runs until closed via HTTP or SIGINT
+```
+
+## API
+
+### ClaudeBrowser
+
+- `launch()` - Launch the browser
+- `close()` - Close the browser
+- `goto(url)` - Navigate to URL
+- `click(selector)` - Click element
+- `type(selector, text)` - Type into input
+- `query(selector)` - Query elements, returns attributes
+- `screenshot(path?, fullPage?)` - Take screenshot
+- `getUrl()` - Get current URL and title
+- `getHtml(full?)` - Get page HTML
+- `back()` / `forward()` / `reload()` - Navigation
+- `wait(ms)` - Wait for timeout
+- `newPage()` - Open new page
+- `executeCommand(cmd)` - Execute a command object
+
+### BrowserServer
+
+- `start()` - Start HTTP server
+- `stop()` - Stop server and close browser
+- `getPort()` - Get server port
+
+## License
+
+MIT
