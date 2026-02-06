@@ -1,4 +1,6 @@
+import chalk from 'chalk';
 import express, { type Request, type Response } from 'express';
+import logSymbols from 'log-symbols';
 import { ClaudeBrowser } from './browser.js';
 import type { BrowserCommand, BrowserOptions, CommandResponse } from './types.js';
 
@@ -6,184 +8,125 @@ export interface ServerOptions extends BrowserOptions {
   port?: number;
 }
 
-// ANSI colors
-const c = {
-  reset: '\x1b[0m',
-  bold: '\x1b[1m',
-  dim: '\x1b[2m',
-  cyan: '\x1b[36m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  magenta: '\x1b[35m',
-  red: '\x1b[31m',
-  gray: '\x1b[90m',
-  white: '\x1b[37m',
+// Icons for commands
+const icons = {
+  goto: '→',
+  click: '◉',
+  type: '⌨',
+  query: '?',
+  screenshot: '📷',
+  url: '🔗',
+  html: '<>',
+  back: '←',
+  forward: '→',
+  reload: '↻',
+  wait: '⏳',
+  newpage: '+',
+  close: '✕',
+  eval: '⚡',
 };
 
-function timestamp(): string {
-  return `${c.gray}[${new Date().toISOString()}]${c.reset}`;
-}
+// Colors for command types
+const cmdColor: Record<string, (s: string) => string> = {
+  goto: chalk.cyan,
+  click: chalk.yellow,
+  type: chalk.magenta,
+  query: chalk.blue,
+  screenshot: chalk.green,
+  url: chalk.cyan,
+  html: chalk.blue,
+  back: chalk.yellow,
+  forward: chalk.yellow,
+  reload: chalk.yellow,
+  wait: chalk.gray,
+  newpage: chalk.green,
+  close: chalk.red,
+  eval: chalk.magenta,
+};
 
-function logOk(ts: string, msg?: string): void {
-  const suffix = msg ? ` ${c.dim}${msg}${c.reset}` : '';
-  console.log(`${ts}   ${c.green}✓${c.reset}${suffix}`);
-}
-
-function logError(ts: string, error: string): void {
-  console.log(`${ts}   ${c.red}✗ Error: ${error}${c.reset}`);
-}
-
-function logCmd(ts: string, icon: string, color: string, name: string, detail?: string): void {
-  const suffix = detail ? ` ${detail}` : '';
-  console.log(`${ts} ${color}${c.bold}${icon}${c.reset} ${color}${name}${c.reset}${suffix}`);
-}
-
-function logCommand(cmd: BrowserCommand): void {
-  const ts = timestamp();
-  switch (cmd.cmd) {
-    case 'goto':
-      logCmd(ts, '→', c.cyan, 'GOTO', `${c.white}${cmd.url}${c.reset}`);
-      break;
-    case 'click':
-      logCmd(ts, '◉', c.yellow, 'CLICK', `${c.white}${cmd.selector}${c.reset}`);
-      break;
-    case 'type':
-      logCmd(
-        ts,
-        '⌨',
-        c.magenta,
-        'TYPE',
-        `${c.white}${cmd.selector}${c.reset} ${c.dim}="${cmd.text}"${c.reset}`
-      );
-      break;
-    case 'query':
-      logCmd(ts, '?', c.blue, 'QUERY', `${c.white}${cmd.selector}${c.reset}`);
-      break;
-    case 'screenshot':
-      logCmd(ts, '📷', c.green, 'SCREENSHOT', `${c.dim}${cmd.path || 'screenshot.png'}${c.reset}`);
-      break;
-    case 'url':
-      logCmd(ts, '🔗', c.cyan, 'URL');
-      break;
-    case 'html':
-      logCmd(ts, '<>', c.blue, 'HTML', cmd.full ? `${c.dim}(full)${c.reset}` : undefined);
-      break;
-    case 'back':
-      logCmd(ts, '←', c.yellow, 'BACK');
-      break;
-    case 'forward':
-      logCmd(ts, '→', c.yellow, 'FORWARD');
-      break;
-    case 'reload':
-      logCmd(ts, '↻', c.yellow, 'RELOAD');
-      break;
-    case 'wait':
-      logCmd(ts, '⏳', c.gray, 'WAIT', `${c.dim}${cmd.ms || 1000}ms${c.reset}`);
-      break;
-    case 'newpage':
-      logCmd(ts, '+', c.green, 'NEW PAGE');
-      break;
-    case 'close':
-      logCmd(ts, '✕', c.red, 'CLOSE');
-      break;
-    case 'eval': {
-      const preview = cmd.script.length > 50 ? `${cmd.script.slice(0, 50)}...` : cmd.script;
-      logCmd(ts, '⚡', c.magenta, 'EVAL', `${c.dim}${preview}${c.reset}`);
-      break;
-    }
-  }
+function ts(): string {
+  return chalk.gray(`[${new Date().toISOString()}]`);
 }
 
 function truncate(str: string, max: number): string {
   return str.length > max ? `${str.slice(0, max)}...` : str;
 }
 
-function logResultGoto(ts: string, result: CommandResponse): void {
-  if (result.ok && 'title' in result && result.title) {
-    logOk(ts, result.title);
+function getCommandDetail(cmd: BrowserCommand): string | undefined {
+  switch (cmd.cmd) {
+    case 'goto':
+      return chalk.white(cmd.url);
+    case 'click':
+    case 'query':
+      return chalk.white(cmd.selector);
+    case 'type':
+      return `${chalk.white(cmd.selector)} ${chalk.dim(`="${cmd.text}"`)}`;
+    case 'screenshot':
+      return chalk.dim(cmd.path || 'screenshot.png');
+    case 'html':
+      return cmd.full ? chalk.dim('(full)') : undefined;
+    case 'wait':
+      return chalk.dim(`${cmd.ms || 1000}ms`);
+    case 'eval':
+      return chalk.dim(truncate(cmd.script, 50));
+    default:
+      return undefined;
   }
 }
 
-function logResultClick(ts: string, result: CommandResponse): void {
-  if (result.ok && 'url' in result) {
-    logOk(ts, `→ ${result.url}`);
-  }
+function logCommand(cmd: BrowserCommand): void {
+  const color = cmdColor[cmd.cmd] || chalk.white;
+  const icon = icons[cmd.cmd as keyof typeof icons] || '•';
+  const detail = getCommandDetail(cmd);
+  const suffix = detail ? ` ${detail}` : '';
+  console.log(`${ts()} ${chalk.bold(color(icon))} ${color(cmd.cmd.toUpperCase())}${suffix}`);
 }
 
-function logResultQuery(ts: string, result: CommandResponse): void {
-  if (result.ok && 'count' in result) {
-    logOk(ts, `Found ${result.count} element(s)`);
-  }
-}
+type ResultFormatter = (result: CommandResponse) => string | undefined;
 
-function logResultScreenshot(ts: string, result: CommandResponse): void {
-  if (result.ok && 'path' in result) {
-    logOk(ts, `Saved to ${result.path}`);
-  }
-}
-
-function logResultUrl(ts: string, result: CommandResponse): void {
-  if (result.ok && 'url' in result) {
-    logOk(ts, result.url);
-  }
-}
-
-function logResultHtml(ts: string, result: CommandResponse): void {
-  if (result.ok && 'html' in result) {
-    logOk(ts, `${result.html?.length || 0} chars`);
-  }
-}
-
-function logResultEval(ts: string, result: CommandResponse): void {
-  if (result.ok && 'result' in result) {
-    const json = JSON.stringify(result.result);
-    logOk(ts, truncate(json, 80));
-  }
-}
-
-const resultLoggers: Record<string, (ts: string, result: CommandResponse) => void> = {
-  goto: logResultGoto,
-  click: logResultClick,
-  query: logResultQuery,
-  screenshot: logResultScreenshot,
-  url: logResultUrl,
-  html: logResultHtml,
-  eval: logResultEval,
+const resultFormatters: Record<string, ResultFormatter> = {
+  goto: (r) => ('title' in r ? r.title : undefined),
+  click: (r) => ('url' in r ? `→ ${r.url}` : undefined),
+  query: (r) => ('count' in r ? `Found ${r.count} element(s)` : undefined),
+  screenshot: (r) => ('path' in r ? `Saved to ${r.path}` : undefined),
+  url: (r) => ('url' in r ? r.url : undefined),
+  html: (r) => ('html' in r ? `${r.html?.length || 0} chars` : undefined),
+  eval: (r) => ('result' in r ? truncate(JSON.stringify(r.result), 80) : undefined),
 };
 
+function getResultMessage(cmd: BrowserCommand, result: CommandResponse): string | undefined {
+  if (!result.ok) return undefined;
+  const formatter = resultFormatters[cmd.cmd];
+  return formatter ? formatter(result) : undefined;
+}
+
 function logResult(cmd: BrowserCommand, result: CommandResponse): void {
-  const ts = timestamp();
   if (!result.ok) {
-    logError(ts, result.error);
+    console.log(`${ts()}   ${logSymbols.error} ${chalk.red(result.error)}`);
     return;
   }
-
-  const logger = resultLoggers[cmd.cmd];
-  if (logger) {
-    logger(ts, result);
-  } else {
-    logOk(ts);
-  }
+  const msg = getResultMessage(cmd, result);
+  const suffix = msg ? ` ${chalk.dim(msg)}` : '';
+  console.log(`${ts()}   ${logSymbols.success}${suffix}`);
 }
 
 function printBanner(port: number): void {
   console.log();
-  console.log(`${c.bold}${c.cyan}  🌐 Claude Browse Server${c.reset}`);
-  console.log(`${c.dim}  ─────────────────────────${c.reset}`);
-  console.log(`  ${c.green}▶${c.reset} Listening on ${c.bold}http://localhost:${port}${c.reset}`);
+  console.log(chalk.cyan.bold('  🌐 Claude Browse Server'));
+  console.log(chalk.dim('  ─────────────────────────'));
+  console.log(`  ${logSymbols.success} Listening on ${chalk.bold(`http://localhost:${port}`)}`);
   console.log();
-  console.log(`${c.dim}  Commands:${c.reset}`);
+  console.log(chalk.dim('  Commands:'));
   console.log(
-    `    ${c.cyan}goto${c.reset}  ${c.yellow}click${c.reset}  ${c.magenta}type${c.reset}  ${c.blue}query${c.reset}  ${c.green}screenshot${c.reset}`
+    `    ${chalk.cyan('goto')}  ${chalk.yellow('click')}  ${chalk.magenta('type')}  ${chalk.blue('query')}  ${chalk.green('screenshot')}`
   );
   console.log(
-    `    ${c.cyan}url${c.reset}  ${c.blue}html${c.reset}  ${c.yellow}back${c.reset}  ${c.yellow}forward${c.reset}  ${c.yellow}reload${c.reset}  ${c.gray}wait${c.reset}  ${c.red}close${c.reset}`
+    `    ${chalk.cyan('url')}  ${chalk.blue('html')}  ${chalk.yellow('back')}  ${chalk.yellow('forward')}  ${chalk.yellow('reload')}  ${chalk.gray('wait')}  ${chalk.red('close')}`
   );
   console.log();
-  console.log(`${c.dim}  Example:${c.reset}`);
+  console.log(chalk.dim('  Example:'));
   console.log(
-    `    ${c.gray}curl -X POST localhost:${port} -d '{"cmd":"goto","url":"https://example.com"}'${c.reset}`
+    chalk.gray(`    curl -X POST localhost:${port} -d '{"cmd":"goto","url":"https://example.com"}'`)
   );
   console.log();
 }
@@ -226,7 +169,7 @@ export class BrowserServer {
       res.json(result);
     } catch (err) {
       const error = (err as Error).message;
-      logError(timestamp(), error);
+      console.log(`${ts()}   ${logSymbols.error} ${chalk.red(error)}`);
       res.status(500).json({ ok: false, error });
     }
   }
@@ -243,13 +186,13 @@ export class BrowserServer {
   }
 
   async stop(): Promise<void> {
-    console.log(`\n${c.dim}  Shutting down...${c.reset}`);
+    console.log(chalk.dim('\n  Shutting down...'));
     if (this.server) {
       this.server.close();
       this.server = null;
     }
     await this.browser.close();
-    console.log(`  ${c.green}✓${c.reset} Browser closed\n`);
+    console.log(`  ${logSymbols.success} Browser closed\n`);
   }
 
   getPort(): number {
