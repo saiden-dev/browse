@@ -1,4 +1,4 @@
-import { type IncomingMessage, type Server, type ServerResponse, createServer } from 'node:http';
+import express, { type Request, type Response } from 'express';
 import { ClaudeBrowser } from './browser.js';
 import type { BrowserCommand, BrowserOptions, CommandResponse } from './types.js';
 
@@ -190,72 +190,52 @@ function printBanner(port: number): void {
 
 export class BrowserServer {
   private browser: ClaudeBrowser;
-  private server: Server | null = null;
+  private app = express();
+  private server: ReturnType<typeof this.app.listen> | null = null;
   private port: number;
 
   constructor(options: ServerOptions = {}) {
     this.browser = new ClaudeBrowser(options);
     this.port = options.port ?? 3000;
+    this.setupMiddleware();
+    this.setupRoutes();
   }
 
-  private async handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204);
-      res.end();
-      return;
-    }
-
-    if (req.method !== 'POST') {
-      res.writeHead(405, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: false, error: 'POST only' }));
-      return;
-    }
-
-    let body = '';
-    for await (const chunk of req) {
-      body += chunk;
-    }
-
-    await this.executeRequest(body, res);
+  private setupMiddleware(): void {
+    this.app.use(express.json());
   }
 
-  private async executeRequest(body: string, res: ServerResponse): Promise<void> {
+  private setupRoutes(): void {
+    this.app.post('/', (req, res) => this.handleCommand(req, res));
+  }
+
+  private async handleCommand(req: Request, res: Response): Promise<void> {
     try {
-      const cmd: BrowserCommand = JSON.parse(body);
+      const cmd = req.body as BrowserCommand;
       logCommand(cmd);
 
       if (cmd.cmd === 'close') {
-        const result = { ok: true as const };
-        logResult(cmd, result);
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(result));
+        logResult(cmd, { ok: true });
+        res.json({ ok: true });
         await this.stop();
         process.exit(0);
       }
 
       const result = await this.browser.executeCommand(cmd);
       logResult(cmd, result);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(result));
+      res.json(result);
     } catch (err) {
-      const errorResult = { ok: false as const, error: (err as Error).message };
-      logError(timestamp(), errorResult.error);
-      res.writeHead(500, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(errorResult));
+      const error = (err as Error).message;
+      logError(timestamp(), error);
+      res.status(500).json({ ok: false, error });
     }
   }
 
   async start(): Promise<void> {
     await this.browser.launch();
 
-    this.server = createServer((req, res) => this.handleRequest(req, res));
-
     return new Promise((resolve) => {
-      this.server!.listen(this.port, () => {
+      this.server = this.app.listen(this.port, () => {
         printBanner(this.port);
         resolve();
       });
@@ -274,6 +254,10 @@ export class BrowserServer {
 
   getPort(): number {
     return this.port;
+  }
+
+  getApp() {
+    return this.app;
   }
 }
 
