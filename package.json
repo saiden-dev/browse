@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "claude-browse": "dist/cli.js"
+    "claude-browse": "dist/cli.js",
+    "claude-browse-mcp": "dist/mcp.js"
   },
   "scripts": {
     "build": "tsc",
@@ -27,7 +28,9 @@
     "browser",
     "automation",
     "claude",
-    "headless"
+    "headless",
+    "mcp",
+    "model-context-protocol"
   ],
   "author": "aladac",
   "license": "MIT",
@@ -39,6 +42,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "chalk": "^5.6.2",
     "express": "^5.2.1",
     "log-symbols": "^7.0.1",
