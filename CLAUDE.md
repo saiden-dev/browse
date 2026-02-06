@@ -65,3 +65,10 @@ All commands return `{ ok: true, ...data }` or `{ ok: false, error: string }`.
 ## CLI Options
 
 Key flags: `-s <port>` (server mode), `-q <selector>` (query), `-c <selector>` (click), `-t <sel>=<text>` (type), `-i` (interactive), `--headed` (visible browser).
+
+## Screenshots
+
+Save screenshots to `screenshots/` directory:
+```bash
+curl localhost:13373 -d '{"cmd":"screenshot","path":"screenshots/page.png"}'
+```
