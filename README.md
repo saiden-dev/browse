@@ -5,7 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/node/v/@aladac/claude-browse.svg)](https://nodejs.org)
 
-Headless browser automation for Claude Code using Playwright WebKit.
+#### Headless browser automation for Claude Code using Playwright WebKit.
+
 <img width="1040" height="588" alt="image" src="https://github.com/user-attachments/assets/e5436f5c-b46d-4d1b-8f5a-54044969d095" />
 
 ## Installation
