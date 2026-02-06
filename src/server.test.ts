@@ -7,7 +7,7 @@ vi.mock('./browser.js', () => ({
   ClaudeBrowser: class MockClaudeBrowser {
     async launch() {}
     async close() {}
-    async executeCommand(cmd: { cmd: string; url?: string }) {
+    async executeCommand(cmd: { cmd: string; url?: string; path?: string }) {
       switch (cmd.cmd) {
         case 'goto':
           return { ok: true, url: cmd.url, title: 'Test Page' };
@@ -21,6 +21,22 @@ vi.mock('./browser.js', () => ({
           return { ok: true, url: 'https://example.com', title: 'Example' };
         case 'html':
           return { ok: true, html: '<html></html>' };
+        case 'back':
+          return { ok: true, url: '/previous' };
+        case 'forward':
+          return { ok: true, url: '/next' };
+        case 'reload':
+          return { ok: true, url: '/current' };
+        case 'wait':
+          return { ok: true };
+        case 'screenshot':
+          return { ok: true, path: cmd.path || 'screenshot.png' };
+        case 'eval':
+          return { ok: true, result: 2 };
+        case 'newpage':
+          return { ok: true };
+        case 'error':
+          throw new Error('Test error');
         default:
           return { ok: true };
       }
@@ -118,6 +134,58 @@ describe('BrowserServer', () => {
         .expect(200);
 
       expect(res.body.ok).toBe(true);
+    });
+
+    it('handles back command', async () => {
+      const app = server.getApp();
+      const res = await request(app).post('/').send({ cmd: 'back' }).expect(200);
+      expect(res.body.ok).toBe(true);
+    });
+
+    it('handles forward command', async () => {
+      const app = server.getApp();
+      const res = await request(app).post('/').send({ cmd: 'forward' }).expect(200);
+      expect(res.body.ok).toBe(true);
+    });
+
+    it('handles reload command', async () => {
+      const app = server.getApp();
+      const res = await request(app).post('/').send({ cmd: 'reload' }).expect(200);
+      expect(res.body.ok).toBe(true);
+    });
+
+    it('handles wait command', async () => {
+      const app = server.getApp();
+      const res = await request(app).post('/').send({ cmd: 'wait', ms: 100 }).expect(200);
+      expect(res.body.ok).toBe(true);
+    });
+
+    it('handles screenshot command', async () => {
+      const app = server.getApp();
+      const res = await request(app)
+        .post('/')
+        .send({ cmd: 'screenshot', path: 'test.png' })
+        .expect(200);
+      expect(res.body.ok).toBe(true);
+    });
+
+    it('handles eval command', async () => {
+      const app = server.getApp();
+      const res = await request(app).post('/').send({ cmd: 'eval', script: '1+1' }).expect(200);
+      expect(res.body.ok).toBe(true);
+    });
+
+    it('handles newpage command', async () => {
+      const app = server.getApp();
+      const res = await request(app).post('/').send({ cmd: 'newpage' }).expect(200);
+      expect(res.body.ok).toBe(true);
+    });
+
+    it('handles errors and returns 500', async () => {
+      const app = server.getApp();
+      const res = await request(app).post('/').send({ cmd: 'error' }).expect(500);
+      expect(res.body.ok).toBe(false);
+      expect(res.body.error).toBe('Test error');
     });
   });
 });

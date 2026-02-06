@@ -21,8 +21,11 @@
     "fix": "biome check --write src/",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run --coverage --passWithNoTests",
+    "test:integration": "vitest run --coverage --config vitest.integration.config.ts",
     "test:watch": "vitest",
-    "test": "npm run fix && npm run typecheck && npm run test:unit && npm run build",
+    "test:all": "vitest run --coverage --config vitest.all.config.ts",
+    "test": "npm run fix && npm run typecheck && npm run test:all && npm run build",
+    "coverage": "npm run test:all && open coverage/index.html",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

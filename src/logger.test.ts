@@ -66,6 +66,36 @@ describe('getCommandDetail', () => {
     const result = getCommandDetail({ cmd: 'wait', ms: 500 });
     expect(result).toContain('500');
   });
+
+  it('returns default ms for wait command without ms', () => {
+    const result = getCommandDetail({ cmd: 'wait' });
+    expect(result).toContain('1000');
+  });
+
+  it('returns script for eval command', () => {
+    const result = getCommandDetail({ cmd: 'eval', script: 'document.title' });
+    expect(result).toContain('document.title');
+  });
+
+  it('truncates long eval scripts', () => {
+    const longScript = 'a'.repeat(100);
+    const result = getCommandDetail({ cmd: 'eval', script: longScript });
+    expect(result).toContain('...');
+  });
+
+  it('returns (full) for html command with full=true', () => {
+    const result = getCommandDetail({ cmd: 'html', full: true });
+    expect(result).toContain('full');
+  });
+
+  it('returns undefined for html command with full=false', () => {
+    expect(getCommandDetail({ cmd: 'html', full: false })).toBeUndefined();
+  });
+
+  it('returns selector for query command', () => {
+    const result = getCommandDetail({ cmd: 'query', selector: '.items' });
+    expect(result).toContain('.items');
+  });
 });
 
 describe('formatCommand', () => {
@@ -96,6 +126,37 @@ describe('formatResult', () => {
   it('formats query result with count', () => {
     const result = formatResult({ cmd: 'query' }, { ok: true, count: 5 });
     expect(result).toContain('5');
+  });
+
+  it('formats click result with url', () => {
+    const result = formatResult({ cmd: 'click' }, { ok: true, url: '/page' });
+    expect(result).toContain('/page');
+  });
+
+  it('formats screenshot result with path', () => {
+    const result = formatResult({ cmd: 'screenshot' }, { ok: true, path: 'test.png' });
+    expect(result).toContain('Saved to test.png');
+  });
+
+  it('formats url result', () => {
+    const result = formatResult({ cmd: 'url' }, { ok: true, url: 'https://example.com' });
+    expect(result).toContain('https://example.com');
+  });
+
+  it('formats html result with length', () => {
+    const result = formatResult({ cmd: 'html' }, { ok: true, html: '<html></html>' });
+    expect(result).toContain('13 chars');
+  });
+
+  it('formats eval result', () => {
+    const result = formatResult({ cmd: 'eval' }, { ok: true, result: { foo: 'bar' } });
+    expect(result).toContain('foo');
+    expect(result).toContain('bar');
+  });
+
+  it('formats result without formatter', () => {
+    const result = formatResult({ cmd: 'wait' }, { ok: true });
+    expect(result).toBeDefined();
   });
 });
 

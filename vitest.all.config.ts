@@ -3,7 +3,6 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
-    exclude: ['src/**/*.integration.test.ts'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
@@ -11,6 +10,7 @@ export default defineConfig({
       reporter: ['text', 'html'],
       reportsDirectory: './coverage',
     },
-    testTimeout: 30000,
+    testTimeout: 60000,
+    hookTimeout: 60000,
   },
 });
