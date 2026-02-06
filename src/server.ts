@@ -146,6 +146,7 @@ export class BrowserServer {
 
   private setupMiddleware(): void {
     this.app.use(express.json());
+    this.app.use(express.text({ type: '*/*' }));
   }
 
   private setupRoutes(): void {
@@ -154,7 +155,7 @@ export class BrowserServer {
 
   private async handleCommand(req: Request, res: Response): Promise<void> {
     try {
-      const cmd = req.body as BrowserCommand;
+      const cmd: BrowserCommand = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       logCommand(cmd);
 
       if (cmd.cmd === 'close') {
