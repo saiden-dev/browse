@@ -19,7 +19,6 @@ const { values, positionals } = parseArgs({
     json: { type: 'boolean', short: 'j', default: false },
     click: { type: 'string', short: 'c', multiple: true },
     type: { type: 'string', short: 't', multiple: true },
-    serve: { type: 'string', short: 's' },
     help: { type: 'boolean', default: false },
     version: { type: 'boolean', short: 'v', default: false },
   },
@@ -40,7 +39,6 @@ Options:
   -j, --json              Output query results as JSON
   -c, --click <selector>  Click on element (can be repeated for multiple clicks)
   -t, --type <sel>=<text> Type text into input (can be repeated)
-  -s, --serve <port>      Start browser server on port (default: 3000)
   -v, --version           Show version
   --help                  Show this help
 
@@ -54,19 +52,19 @@ Examples:
   claude-browse -t "input[name=q]=hello" -c "button[type=submit]" https://google.com
   claude-browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
 
-Server mode:
-  claude-browse -s 3000                    # Start server on port 3000
-  claude-browse -s 3000 --headed           # Start with visible browser
+Server mode (default):
+  claude-browse                            # Start server on port 13373
+  claude-browse --headed                   # Start with visible browser
 
   # Send commands via curl:
-  curl -X POST http://localhost:3000 -d '{"cmd":"goto","url":"https://example.com"}'
-  curl -X POST http://localhost:3000 -d '{"cmd":"click","selector":"button"}'
-  curl -X POST http://localhost:3000 -d '{"cmd":"type","selector":"input","text":"hello"}'
-  curl -X POST http://localhost:3000 -d '{"cmd":"query","selector":"a[href]"}'
-  curl -X POST http://localhost:3000 -d '{"cmd":"screenshot","path":"shot.png"}'
-  curl -X POST http://localhost:3000 -d '{"cmd":"url"}'
-  curl -X POST http://localhost:3000 -d '{"cmd":"html"}'
-  curl -X POST http://localhost:3000 -d '{"cmd":"close"}'
+  curl -X POST http://localhost:13373 -d '{"cmd":"goto","url":"https://example.com"}'
+  curl -X POST http://localhost:13373 -d '{"cmd":"click","selector":"button"}'
+  curl -X POST http://localhost:13373 -d '{"cmd":"type","selector":"input","text":"hello"}'
+  curl -X POST http://localhost:13373 -d '{"cmd":"query","selector":"a[href]"}'
+  curl -X POST http://localhost:13373 -d '{"cmd":"screenshot","path":"shot.png"}'
+  curl -X POST http://localhost:13373 -d '{"cmd":"url"}'
+  curl -X POST http://localhost:13373 -d '{"cmd":"html"}'
+  curl -X POST http://localhost:13373 -d '{"cmd":"close"}'
 `;
 
 function getViewportConfig() {
@@ -78,7 +76,7 @@ function getViewportConfig() {
 }
 
 async function runServerMode(): Promise<void> {
-  const port = Number.parseInt(values.serve as string) || 3000;
+  const port = 13373;
   const server = await startServer({ port, ...getViewportConfig() });
 
   process.on('SIGINT', async () => {
@@ -197,14 +195,14 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  if (values.serve) {
-    await runServerMode();
-    return;
-  }
-
-  if (values.help || positionals.length === 0) {
+  if (values.help) {
     console.log(HELP);
     process.exit(0);
+  }
+
+  if (positionals.length === 0) {
+    await runServerMode();
+    return;
   }
 
   await runBrowserMode();
