@@ -72,3 +72,12 @@ Save screenshots to `screenshots/` directory:
 ```bash
 curl localhost:13373 -d '{"cmd":"screenshot","path":"screenshots/page.png"}'
 ```
+
+## MCP Server
+
+Run as MCP server for Claude Code integration:
+```bash
+claude-browse-mcp
+```
+
+The MCP server (`src/mcp.ts`) exposes all browser commands as tools. It uses stdio transport and auto-launches the browser on first command.
