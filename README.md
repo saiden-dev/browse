@@ -78,6 +78,29 @@ curl -X POST localhost:3000 -d '{"cmd":"wait","ms":2000}'
 curl -X POST localhost:3000 -d '{"cmd":"close"}'
 ```
 
+## MCP Server (Model Context Protocol)
+
+Use with Claude Code or any MCP-compatible client:
+
+```bash
+# Run the MCP server
+claude-browse-mcp
+```
+
+Add to Claude Code's MCP config (`~/.claude/settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "browser": {
+      "command": "claude-browse-mcp"
+    }
+  }
+}
+```
+
+Available tools: `goto`, `click`, `type`, `query`, `screenshot`, `url`, `html`, `back`, `forward`, `reload`, `wait`, `eval`
+
 ## Programmatic Usage
 
 ```typescript
