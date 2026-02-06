@@ -1,6 +1,6 @@
 {
   "name": "@aladac/claude-browse",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Headless browser automation for Claude Code using Playwright WebKit",
   "type": "module",
   "main": "dist/index.js",
