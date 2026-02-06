@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-import { parseArgs } from 'node:util';
 import { resolve } from 'node:path';
+import { parseArgs } from 'node:util';
 import { ClaudeBrowser } from './browser.js';
 import { startServer } from './server.js';
+import type { ElementInfo } from './types.js';
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -68,30 +69,136 @@ Server mode:
   curl -X POST http://localhost:3000 -d '{"cmd":"close"}'
 `;
 
+function getViewportConfig() {
+  return {
+    headless: !values.headed,
+    width: Number.parseInt(values.width as string),
+    height: Number.parseInt(values.height as string),
+  };
+}
+
+async function runServerMode(): Promise<void> {
+  const port = Number.parseInt(values.serve as string) || 3000;
+  const server = await startServer({ port, ...getViewportConfig() });
+
+  process.on('SIGINT', async () => {
+    console.log('\nShutting down...');
+    await server.stop();
+    process.exit(0);
+  });
+
+  await new Promise(() => {});
+}
+
+async function processTypeActions(browser: ClaudeBrowser): Promise<void> {
+  const typeActions = values.type as string[] | undefined;
+  if (!typeActions?.length) return;
+
+  for (const typeAction of typeActions) {
+    const eqIndex = typeAction.indexOf('=');
+    if (eqIndex === -1) {
+      console.error(`Invalid --type format: "${typeAction}" (expected selector=text)`);
+      continue;
+    }
+    const selector = typeAction.slice(0, eqIndex);
+    const text = typeAction.slice(eqIndex + 1);
+    console.log(`Typing "${text}" into: ${selector}`);
+    await browser.type(selector, text);
+  }
+}
+
+async function processClickActions(browser: ClaudeBrowser): Promise<void> {
+  const clickActions = values.click as string[] | undefined;
+  if (!clickActions?.length) return;
+
+  for (const selector of clickActions) {
+    console.log(`Clicking: ${selector}`);
+    await browser.click(selector);
+    await browser.wait(500);
+  }
+  const { url: currentUrl } = await browser.getUrl();
+  console.log(`Current URL: ${currentUrl}`);
+}
+
+function printElement(el: ElementInfo, index: number): void {
+  console.log(`[${index + 1}] <${el.tag}>`);
+  for (const [name, value] of Object.entries(el.attributes)) {
+    console.log(`    ${name}="${value}"`);
+  }
+  if (el.text) {
+    const truncated = el.text.length > 100 ? `${el.text.slice(0, 100)}...` : el.text;
+    console.log(`    text: "${truncated}"`);
+  }
+  console.log();
+}
+
+async function runQueryMode(browser: ClaudeBrowser): Promise<void> {
+  const elements = await browser.query(values.query as string);
+
+  if (values.json) {
+    console.log(JSON.stringify(elements, null, 2));
+  } else {
+    console.log(`Found ${elements.length} element(s) matching "${values.query}":\n`);
+    elements.forEach(printElement);
+  }
+
+  await browser.close();
+  process.exit(0);
+}
+
+async function runInteractiveMode(browser: ClaudeBrowser): Promise<void> {
+  console.log('Interactive mode - browser will stay open.');
+  console.log('Press Ctrl+C to exit.');
+
+  process.on('SIGINT', async () => {
+    console.log('\nClosing browser...');
+    await browser.close();
+    process.exit(0);
+  });
+
+  await new Promise(() => {});
+}
+
+async function runScreenshotMode(browser: ClaudeBrowser): Promise<void> {
+  const outputPath = resolve(values.output as string);
+  console.log(`Saving screenshot to: ${outputPath}`);
+  await browser.screenshot(outputPath, values.fullpage);
+  await browser.close();
+  console.log('Done!');
+}
+
+async function runBrowserMode(): Promise<void> {
+  const url = positionals[0];
+  const browser = new ClaudeBrowser(getViewportConfig());
+
+  await browser.launch();
+  console.log(`Navigating to: ${url}`);
+  await browser.goto(url);
+  await browser.wait(Number.parseInt(values.wait as string));
+
+  await processTypeActions(browser);
+  await processClickActions(browser);
+
+  if (values.query) {
+    await runQueryMode(browser);
+    return;
+  }
+
+  if (values.interactive) {
+    await runInteractiveMode(browser);
+  } else {
+    await runScreenshotMode(browser);
+  }
+}
+
 async function main(): Promise<void> {
   if (values.version) {
     console.log('claude-browse 0.1.0');
     process.exit(0);
   }
 
-  // Server mode
   if (values.serve) {
-    const port = parseInt(values.serve) || 3000;
-    const server = await startServer({
-      port,
-      headless: !values.headed,
-      width: parseInt(values.width as string),
-      height: parseInt(values.height as string),
-    });
-
-    process.on('SIGINT', async () => {
-      console.log('\nShutting down...');
-      await server.stop();
-      process.exit(0);
-    });
-
-    // Keep alive
-    await new Promise(() => {});
+    await runServerMode();
     return;
   }
 
@@ -100,97 +207,7 @@ async function main(): Promise<void> {
     process.exit(0);
   }
 
-  const url = positionals[0];
-  const outputPath = resolve(values.output as string);
-
-  const browser = new ClaudeBrowser({
-    headless: !values.headed,
-    width: parseInt(values.width as string),
-    height: parseInt(values.height as string),
-  });
-
-  await browser.launch();
-
-  console.log(`Navigating to: ${url}`);
-  await browser.goto(url);
-  await browser.wait(parseInt(values.wait as string));
-
-  // Process type actions (before clicks, typically for form filling)
-  const typeActions = values.type as string[] | undefined;
-  if (typeActions?.length) {
-    for (const typeAction of typeActions) {
-      const eqIndex = typeAction.indexOf('=');
-      if (eqIndex === -1) {
-        console.error(
-          `Invalid --type format: "${typeAction}" (expected selector=text)`
-        );
-        continue;
-      }
-      const selector = typeAction.slice(0, eqIndex);
-      const text = typeAction.slice(eqIndex + 1);
-      console.log(`Typing "${text}" into: ${selector}`);
-      await browser.type(selector, text);
-    }
-  }
-
-  // Process click actions
-  const clickActions = values.click as string[] | undefined;
-  if (clickActions?.length) {
-    for (const selector of clickActions) {
-      console.log(`Clicking: ${selector}`);
-      await browser.click(selector);
-      await browser.wait(500);
-    }
-    const { url: currentUrl } = await browser.getUrl();
-    console.log(`Current URL: ${currentUrl}`);
-  }
-
-  // Query elements if -q/--query is specified
-  if (values.query) {
-    const elements = await browser.query(values.query);
-
-    if (values.json) {
-      console.log(JSON.stringify(elements, null, 2));
-    } else {
-      console.log(
-        `Found ${elements.length} element(s) matching "${values.query}":\n`
-      );
-      elements.forEach((el, i) => {
-        console.log(`[${i + 1}] <${el.tag}>`);
-        for (const [name, value] of Object.entries(el.attributes)) {
-          console.log(`    ${name}="${value}"`);
-        }
-        if (el.text) {
-          console.log(
-            `    text: "${el.text.slice(0, 100)}${el.text.length > 100 ? '...' : ''}"`
-          );
-        }
-        console.log();
-      });
-    }
-
-    await browser.close();
-    process.exit(0);
-  }
-
-  if (!values.interactive) {
-    console.log(`Saving screenshot to: ${outputPath}`);
-    await browser.screenshot(outputPath, values.fullpage);
-    await browser.close();
-    console.log('Done!');
-  } else {
-    console.log('Interactive mode - browser will stay open.');
-    console.log('Press Ctrl+C to exit.');
-
-    process.on('SIGINT', async () => {
-      console.log('\nClosing browser...');
-      await browser.close();
-      process.exit(0);
-    });
-
-    // Keep alive
-    await new Promise(() => {});
-  }
+  await runBrowserMode();
 }
 
 main().catch((err) => {

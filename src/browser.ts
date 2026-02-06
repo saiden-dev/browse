@@ -1,11 +1,6 @@
-import { webkit, Browser, BrowserContext, Page } from 'playwright';
 import { resolve } from 'node:path';
-import type {
-  BrowserOptions,
-  BrowserCommand,
-  CommandResponse,
-  ElementInfo,
-} from './types.js';
+import { type Browser, type BrowserContext, type Page, webkit } from 'playwright';
+import type { BrowserCommand, BrowserOptions, CommandResponse, ElementInfo } from './types.js';
 
 export class ClaudeBrowser {
   private browser: Browser | null = null;
@@ -83,10 +78,7 @@ export class ClaudeBrowser {
     );
   }
 
-  async screenshot(
-    path?: string,
-    fullPage = false
-  ): Promise<{ path: string; buffer?: Buffer }> {
+  async screenshot(path?: string, fullPage = false): Promise<{ path: string; buffer?: Buffer }> {
     const page = this.ensurePage();
     const resolvedPath = resolve(path || 'screenshot.png');
     const buffer = await page.screenshot({ path: resolvedPath, fullPage });
@@ -198,8 +190,10 @@ export class ClaudeBrowser {
           const result = await this.eval(cmd.script);
           return { ok: true, result };
         }
-        default:
-          return { ok: false, error: `Unknown command: ${(cmd as any).cmd}` };
+        default: {
+          const _exhaustive: never = cmd;
+          return { ok: false, error: `Unknown command: ${(_exhaustive as { cmd: string }).cmd}` };
+        }
       }
     } catch (err) {
       return { ok: false, error: (err as Error).message };

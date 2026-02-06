@@ -5,12 +5,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Development
 
 ```bash
-npm install                  # Install dependencies
+npm install                    # Install dependencies
 npx playwright install webkit  # Install WebKit browser
-npm run build                # Compile TypeScript to dist/
-npm run dev                  # Watch mode compilation
-npm start                    # Run the CLI (after build)
+npm run build                  # Compile TypeScript to dist/
+npm run dev                    # Watch mode compilation
+npm start                      # Run the CLI (after build)
 ```
+
+## Lint, Format & Typecheck
+
+```bash
+npm run check                  # Run all checks (lint + format)
+npm run fix                    # Fix all auto-fixable issues
+npm run lint                   # Lint only
+npm run lint:fix               # Lint with autofix
+npm run format                 # Check formatting
+npm run format:fix             # Fix formatting
+npm run typecheck              # TypeScript type checking
+```
+
+## Code Style
+
+- **Short methods**: Keep methods under 20 lines. Extract logic into focused helper methods.
+- **Single responsibility**: Each class handles one concern. Split large classes by domain.
+- **Class structure**:
+  - `ClaudeBrowser` - browser lifecycle and page interactions
+  - `BrowserServer` - HTTP server and request handling
+  - `Logger` (planned) - colored console output
+- **Naming**: Commands use `verbNoun` pattern (e.g., `getCookies`, `setStorage`).
+- **Types**: All commands in discriminated union. Add new commands to `BrowserCommand` type.
 
 ## Architecture
 
