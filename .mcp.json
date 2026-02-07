@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "claude-browse": {
+      "command": "npx",
+      "args": ["claude-browse-mcp"]
+    }
+  }
+}
