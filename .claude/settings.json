@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__claude-browse__goto",
+      "mcp__claude-browse__back",
+      "mcp__claude-browse__forward",
+      "mcp__claude-browse__reload",
+      "mcp__claude-browse__click",
+      "mcp__claude-browse__type",
+      "mcp__claude-browse__query",
+      "mcp__claude-browse__url",
+      "mcp__claude-browse__html",
+      "mcp__claude-browse__screenshot",
+      "mcp__claude-browse__eval",
+      "mcp__claude-browse__wait"
+    ]
+  }
+}
