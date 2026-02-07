@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { ClaudeBrowser } from './browser.js';
+import * as image from './image.js';
 import { type CommandLike, type ResultLike, stderrLogger as log } from './logger.js';
 
 const browser = new ClaudeBrowser({ headless: true, width: 1280, height: 800 });
@@ -184,6 +185,108 @@ server.tool(
     await ensureLaunched();
     await browser.wait(ms);
     return textResult(JSON.stringify({ ok: true }));
+  })
+);
+
+// Image processing
+server.tool(
+  'favicon',
+  'Generate a complete favicon set from an image (16x16, 32x32, 48x48, apple-touch-icon 180x180, android-chrome 192x192 and 512x512)',
+  {
+    input: z.string().describe('Path to source image'),
+    outputDir: z.string().describe('Directory to output favicon files'),
+  },
+  withLogging('favicon', async ({ input, outputDir }) => {
+    const result = await image.createFavicon(input, outputDir);
+    return textResult(
+      JSON.stringify({ ok: true, files: result.files, outputDir: result.outputDir })
+    );
+  })
+);
+
+server.tool(
+  'convert',
+  'Convert an image to a different format (png, jpeg, webp, avif)',
+  {
+    input: z.string().describe('Path to source image'),
+    output: z.string().describe('Path for output image'),
+    format: z.enum(['png', 'jpeg', 'webp', 'avif']).describe('Target format'),
+  },
+  withLogging('convert', async ({ input, output, format }) => {
+    const result = await image.convert(input, output, format);
+    return textResult(JSON.stringify({ ok: true, ...result }));
+  })
+);
+
+server.tool(
+  'resize',
+  'Resize an image to specified dimensions',
+  {
+    input: z.string().describe('Path to source image'),
+    output: z.string().describe('Path for output image'),
+    width: z.number().describe('Target width in pixels'),
+    height: z
+      .number()
+      .optional()
+      .describe('Target height in pixels (optional, maintains aspect ratio if omitted)'),
+    fit: z
+      .enum(['cover', 'contain', 'fill', 'inside', 'outside'])
+      .optional()
+      .default('cover')
+      .describe('How to fit the image'),
+  },
+  withLogging('resize', async ({ input, output, width, height, fit }) => {
+    const result = await image.resize(input, output, width, height, fit);
+    return textResult(JSON.stringify({ ok: true, ...result }));
+  })
+);
+
+server.tool(
+  'crop',
+  'Crop a region from an image',
+  {
+    input: z.string().describe('Path to source image'),
+    output: z.string().describe('Path for output image'),
+    left: z.number().describe('Left edge position in pixels'),
+    top: z.number().describe('Top edge position in pixels'),
+    width: z.number().describe('Width of crop region in pixels'),
+    height: z.number().describe('Height of crop region in pixels'),
+  },
+  withLogging('crop', async ({ input, output, left, top, width, height }) => {
+    const result = await image.crop(input, output, left, top, width, height);
+    return textResult(JSON.stringify({ ok: true, ...result }));
+  })
+);
+
+server.tool(
+  'compress',
+  'Compress an image to reduce file size',
+  {
+    input: z.string().describe('Path to source image'),
+    output: z.string().describe('Path for output image'),
+    quality: z.number().min(1).max(100).optional().default(80).describe('Quality level 1-100'),
+  },
+  withLogging('compress', async ({ input, output, quality }) => {
+    const result = await image.compress(input, output, quality);
+    return textResult(JSON.stringify({ ok: true, ...result }));
+  })
+);
+
+server.tool(
+  'thumbnail',
+  'Create a thumbnail from an image',
+  {
+    input: z.string().describe('Path to source image'),
+    output: z.string().describe('Path for output image'),
+    size: z
+      .enum(['small', 'medium', 'large'])
+      .optional()
+      .default('medium')
+      .describe('Thumbnail size preset (small=150px, medium=300px, large=600px)'),
+  },
+  withLogging('thumbnail', async ({ input, output, size }) => {
+    const result = await image.thumbnail(input, output, size);
+    return textResult(JSON.stringify({ ok: true, ...result }));
   })
 );
 

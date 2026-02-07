@@ -1,5 +1,18 @@
 export { ClaudeBrowser } from './browser.js';
 export { BrowserServer, startServer } from './server.js';
+export {
+  createFavicon,
+  convert,
+  resize,
+  crop,
+  compress,
+  thumbnail,
+  type FaviconResult,
+  type ImageResult,
+  type FitType,
+  type FormatType,
+  type ThumbnailSize,
+} from './image.js';
 export type {
   BrowserOptions,
   BrowserCommand,
@@ -21,5 +34,11 @@ export type {
   NewPageCommand,
   CloseCommand,
   EvalCommand,
+  FaviconCommand,
+  ConvertCommand,
+  ResizeCommand,
+  CropCommand,
+  CompressCommand,
+  ThumbnailCommand,
 } from './types.js';
 export type { ServerOptions } from './server.js';

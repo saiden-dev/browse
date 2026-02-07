@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 import { type Browser, type BrowserContext, type Page, webkit } from 'playwright';
+import * as image from './image.js';
 import type { BrowserCommand, BrowserOptions, CommandResponse, ElementInfo } from './types.js';
 
 export class ClaudeBrowser {
@@ -189,6 +190,72 @@ export class ClaudeBrowser {
         case 'eval': {
           const result = await this.eval(cmd.script);
           return { ok: true, result };
+        }
+        case 'favicon': {
+          const result = await image.createFavicon(cmd.input, cmd.outputDir);
+          return { ok: true, files: result.files, outputDir: result.outputDir };
+        }
+        case 'convert': {
+          const result = await image.convert(cmd.input, cmd.output, cmd.format);
+          return {
+            ok: true,
+            path: result.path,
+            width: result.width,
+            height: result.height,
+            format: result.format,
+            size: result.size,
+          };
+        }
+        case 'resize': {
+          const result = await image.resize(cmd.input, cmd.output, cmd.width, cmd.height, cmd.fit);
+          return {
+            ok: true,
+            path: result.path,
+            width: result.width,
+            height: result.height,
+            format: result.format,
+            size: result.size,
+          };
+        }
+        case 'crop': {
+          const result = await image.crop(
+            cmd.input,
+            cmd.output,
+            cmd.left,
+            cmd.top,
+            cmd.width,
+            cmd.height
+          );
+          return {
+            ok: true,
+            path: result.path,
+            width: result.width,
+            height: result.height,
+            format: result.format,
+            size: result.size,
+          };
+        }
+        case 'compress': {
+          const result = await image.compress(cmd.input, cmd.output, cmd.quality);
+          return {
+            ok: true,
+            path: result.path,
+            width: result.width,
+            height: result.height,
+            format: result.format,
+            size: result.size,
+          };
+        }
+        case 'thumbnail': {
+          const result = await image.thumbnail(cmd.input, cmd.output, cmd.size);
+          return {
+            ok: true,
+            path: result.path,
+            width: result.width,
+            height: result.height,
+            format: result.format,
+            size: result.size,
+          };
         }
         default: {
           const _exhaustive: never = cmd;

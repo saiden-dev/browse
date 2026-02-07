@@ -2,6 +2,7 @@
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { ClaudeBrowser } from './browser.js';
+import * as image from './image.js';
 import { startServer } from './server.js';
 import type { ElementInfo } from './types.js';
 
@@ -21,6 +22,11 @@ const { values, positionals } = parseArgs({
     type: { type: 'string', short: 't', multiple: true },
     help: { type: 'boolean', default: false },
     version: { type: 'boolean', short: 'v', default: false },
+    // Image processing options
+    favicon: { type: 'string' },
+    convert: { type: 'string' },
+    resize: { type: 'string' },
+    compress: { type: 'string' },
   },
 });
 
@@ -42,6 +48,12 @@ Options:
   -v, --version           Show version
   --help                  Show this help
 
+Image Processing:
+  --favicon <dir>         Generate favicon set to directory (from screenshot or input)
+  --convert <format>      Convert screenshot to format (png, jpeg, webp, avif)
+  --resize <WxH>          Resize screenshot (e.g., 800x600 or 800 for width only)
+  --compress <quality>    Compress with quality 1-100
+
 Examples:
   claude-browse https://example.com
   claude-browse -o page.png -w 1920 -h 1080 https://example.com
@@ -51,6 +63,12 @@ Examples:
   claude-browse -c "button.submit" https://example.com
   claude-browse -t "input[name=q]=hello" -c "button[type=submit]" https://google.com
   claude-browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
+
+Image processing examples:
+  claude-browse https://example.com --favicon ./favicons/
+  claude-browse https://example.com -o page.webp --convert webp
+  claude-browse https://example.com --resize 800x600
+  claude-browse https://example.com --compress 60
 
 Server mode (default):
   claude-browse                            # Start server on port 13373
@@ -65,6 +83,12 @@ Server mode (default):
   curl -X POST http://localhost:13373 -d '{"cmd":"url"}'
   curl -X POST http://localhost:13373 -d '{"cmd":"html"}'
   curl -X POST http://localhost:13373 -d '{"cmd":"close"}'
+
+  # Image processing via server:
+  curl localhost:13373 -d '{"cmd":"favicon","input":"screenshot.png","outputDir":"./favicons"}'
+  curl localhost:13373 -d '{"cmd":"convert","input":"img.png","output":"img.webp","format":"webp"}'
+  curl localhost:13373 -d '{"cmd":"resize","input":"img.png","output":"small.png","width":400}'
+  curl localhost:13373 -d '{"cmd":"compress","input":"img.png","output":"compressed.png","quality":60}'
 `;
 
 function getViewportConfig() {
@@ -157,10 +181,45 @@ async function runInteractiveMode(browser: ClaudeBrowser): Promise<void> {
   await new Promise(() => {});
 }
 
+async function processImageOptions(screenshotPath: string): Promise<void> {
+  // Process image options on the screenshot
+  if (values.favicon) {
+    console.log(`Generating favicon set to: ${values.favicon}`);
+    const result = await image.createFavicon(screenshotPath, values.favicon as string);
+    console.log(`Created ${result.files.length} favicon files`);
+  }
+
+  if (values.convert) {
+    const format = values.convert as 'png' | 'jpeg' | 'webp' | 'avif';
+    const outputPath = screenshotPath.replace(/\.[^.]+$/, `.${format}`);
+    console.log(`Converting to ${format}: ${outputPath}`);
+    await image.convert(screenshotPath, outputPath, format);
+  }
+
+  if (values.resize) {
+    const resizeValue = values.resize as string;
+    const [widthStr, heightStr] = resizeValue.split('x');
+    const width = Number.parseInt(widthStr);
+    const height = heightStr ? Number.parseInt(heightStr) : undefined;
+    console.log(`Resizing to ${width}${height ? `x${height}` : ''}`);
+    await image.resize(screenshotPath, screenshotPath, width, height);
+  }
+
+  if (values.compress) {
+    const quality = Number.parseInt(values.compress as string);
+    console.log(`Compressing with quality ${quality}`);
+    await image.compress(screenshotPath, screenshotPath, quality);
+  }
+}
+
 async function runScreenshotMode(browser: ClaudeBrowser): Promise<void> {
   const outputPath = resolve(values.output as string);
   console.log(`Saving screenshot to: ${outputPath}`);
   await browser.screenshot(outputPath, values.fullpage);
+
+  // Process any image options
+  await processImageOptions(outputPath);
+
   await browser.close();
   console.log('Done!');
 }

@@ -77,6 +77,53 @@ export interface EvalCommand {
   script: string;
 }
 
+// Image processing commands
+export interface FaviconCommand {
+  cmd: 'favicon';
+  input: string;
+  outputDir: string;
+}
+
+export interface ConvertCommand {
+  cmd: 'convert';
+  input: string;
+  output: string;
+  format: 'png' | 'jpeg' | 'webp' | 'avif';
+}
+
+export interface ResizeCommand {
+  cmd: 'resize';
+  input: string;
+  output: string;
+  width: number;
+  height?: number;
+  fit?: 'cover' | 'contain' | 'fill' | 'inside' | 'outside';
+}
+
+export interface CropCommand {
+  cmd: 'crop';
+  input: string;
+  output: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export interface CompressCommand {
+  cmd: 'compress';
+  input: string;
+  output: string;
+  quality?: number;
+}
+
+export interface ThumbnailCommand {
+  cmd: 'thumbnail';
+  input: string;
+  output: string;
+  size?: 'small' | 'medium' | 'large';
+}
+
 export type BrowserCommand =
   | GotoCommand
   | ClickCommand
@@ -91,7 +138,13 @@ export type BrowserCommand =
   | WaitCommand
   | NewPageCommand
   | CloseCommand
-  | EvalCommand;
+  | EvalCommand
+  | FaviconCommand
+  | ConvertCommand
+  | ResizeCommand
+  | CropCommand
+  | CompressCommand
+  | ThumbnailCommand;
 
 // Response types
 export interface SuccessResponse {
@@ -103,6 +156,13 @@ export interface SuccessResponse {
   count?: number;
   elements?: ElementInfo[];
   result?: unknown;
+  // Image processing fields
+  files?: string[];
+  outputDir?: string;
+  width?: number;
+  height?: number;
+  format?: string;
+  size?: number;
 }
 
 export interface ErrorResponse {
