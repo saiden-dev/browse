@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "bin": {
     "claude-browse": "dist/cli.js",
-    "claude-browse-mcp": "dist/mcp.js"
+    "browse-mcp": "dist/mcp.js"
   },
   "scripts": {
     "build": "tsc",

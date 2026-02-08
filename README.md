@@ -133,7 +133,7 @@ Use with any MCP-compatible client:
 
 ```bash
 # Run the MCP server
-claude-browse-mcp
+browse-mcp
 ```
 
 Add to Claude Code's MCP config (`~/.claude/settings.json`):
@@ -142,7 +142,7 @@ Add to Claude Code's MCP config (`~/.claude/settings.json`):
 {
   "mcpServers": {
     "browser": {
-      "command": "claude-browse-mcp"
+      "command": "browse-mcp"
     }
   }
 }
