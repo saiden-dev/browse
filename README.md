@@ -90,12 +90,14 @@ curl -X POST localhost:3000 -d '{"cmd":"close"}'
 Install as a Claude Code plugin for the best integration:
 
 ```bash
-# Install the plugin
-claude plugin install https://github.com/aladac/claude-browse
+# Install from GitHub
+claude plugin install github:aladac/claude-browse
 
-# Or load temporarily during development
-claude --plugin-dir /path/to/claude-browse
+# Or install from local path
+claude plugin install /path/to/claude-browse
 ```
+
+**Prerequisites:** Node.js 18+ (the MCP server runs via npx)
 
 ### Plugin Features
 
