@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "claude-browse": "dist/cli.js",
+    "browse": "dist/cli.js",
     "browse-mcp": "dist/mcp.js"
   },
   "scripts": {

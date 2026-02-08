@@ -20,24 +20,24 @@ npx playwright install webkit
 
 ```bash
 # Take a screenshot
-claude-browse https://example.com
+browse https://example.com
 
 # Custom viewport and output
-claude-browse -o page.png -w 1920 -h 1080 https://example.com
+browse -o page.png -w 1920 -h 1080 https://example.com
 
 # Query elements
-claude-browse -q "a[href]" https://example.com
-claude-browse -q "img" -j https://example.com  # JSON output
+browse -q "a[href]" https://example.com
+browse -q "img" -j https://example.com  # JSON output
 
 # Click and interact
-claude-browse -c "button.submit" https://example.com
-claude-browse -t "input[name=q]=hello" -c "button[type=submit]" https://google.com
+browse -c "button.submit" https://example.com
+browse -t "input[name=q]=hello" -c "button[type=submit]" https://google.com
 
 # Chain actions
-claude-browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
+browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
 
 # Interactive mode (visible browser)
-claude-browse -i --headed https://example.com
+browse -i --headed https://example.com
 ```
 
 ## Server Mode
@@ -45,8 +45,8 @@ claude-browse -i --headed https://example.com
 Start a persistent browser server that accepts commands via HTTP:
 
 ```bash
-claude-browse -s 3000           # headless
-claude-browse -s 3000 --headed  # visible browser
+browse -s 3000           # headless
+browse -s 3000 --headed  # visible browser
 ```
 
 Send commands:

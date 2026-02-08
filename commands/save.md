@@ -12,4 +12,4 @@ Use the `session_save` tool to save:
 
 If no path is specified, save to `session.json` in the current directory.
 
-This allows you to restore the session later with `/claude-browse:restore`.
+This allows you to restore the session later with `/browse:restore`.

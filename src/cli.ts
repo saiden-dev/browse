@@ -36,7 +36,7 @@ const { values, positionals } = parseArgs({
 });
 
 const HELP = `
-Usage: claude-browse [options] <url>
+Usage: browse [options] <url>
 
 Options:
   -o, --output <file>     Output screenshot path (default: screenshot.png)
@@ -60,24 +60,24 @@ Image Processing:
   --compress <quality>    Compress with quality 1-100
 
 Examples:
-  claude-browse https://example.com
-  claude-browse -o page.png -w 1920 -h 1080 https://example.com
-  claude-browse -i --headed https://example.com
-  claude-browse -q "a[href]" https://example.com
-  claude-browse -q "img" -j https://example.com
-  claude-browse -c "button.submit" https://example.com
-  claude-browse -t "input[name=q]=hello" -c "button[type=submit]" https://google.com
-  claude-browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
+  browse https://example.com
+  browse -o page.png -w 1920 -h 1080 https://example.com
+  browse -i --headed https://example.com
+  browse -q "a[href]" https://example.com
+  browse -q "img" -j https://example.com
+  browse -c "button.submit" https://example.com
+  browse -t "input[name=q]=hello" -c "button[type=submit]" https://google.com
+  browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
 
 Image processing examples:
-  claude-browse https://example.com --favicon ./favicons/
-  claude-browse https://example.com -o page.webp --convert webp
-  claude-browse https://example.com --resize 800x600
-  claude-browse https://example.com --compress 60
+  browse https://example.com --favicon ./favicons/
+  browse https://example.com -o page.webp --convert webp
+  browse https://example.com --resize 800x600
+  browse https://example.com --compress 60
 
 Server mode (default):
-  claude-browse                            # Start server on port 13373
-  claude-browse --headed                   # Start with visible browser
+  browse                            # Start server on port 13373
+  browse --headed                   # Start with visible browser
 
   # Send commands via curl:
   curl -X POST http://localhost:13373 -d '{"cmd":"goto","url":"https://example.com"}'
@@ -255,7 +255,7 @@ async function runBrowserMode(): Promise<void> {
 
 async function main(): Promise<void> {
   if (values.version) {
-    console.log(`claude-browse ${pkg.version}`);
+    console.log(`browse ${pkg.version}`);
     process.exit(0);
   }
 

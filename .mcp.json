@@ -1,8 +1,8 @@
 {
   "mcpServers": {
-    "claude-browse": {
-      "command": "npx",
-      "args": ["browse-mcp"]
+    "browse": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/mcp.js"]
     }
   }
 }
