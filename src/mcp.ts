@@ -225,7 +225,7 @@ server.tool(
     const cookies = await context.cookies();
 
     // Get localStorage and sessionStorage (runs in browser context)
-    const storage = await page.evaluate(`({
+    const storage = (await page.evaluate(`({
       localStorage: Object.fromEntries(
         Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))
           .filter(k => k !== null)
@@ -236,7 +236,7 @@ server.tool(
           .filter(k => k !== null)
           .map(k => [k, sessionStorage.getItem(k) || ''])
       ),
-    })`) as { localStorage: Record<string, string>; sessionStorage: Record<string, string> };
+    })`)) as { localStorage: Record<string, string>; sessionStorage: Record<string, string> };
 
     const sessionData = {
       url,
