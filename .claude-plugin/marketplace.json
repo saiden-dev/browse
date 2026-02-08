@@ -1,6 +1,6 @@
 {
-  "name": "browse-marketplace",
-  "description": "Browser automation plugin for Claude Code",
+  "name": "saiden",
+  "description": "Saiden's Claude Code plugins",
   "owner": {
     "name": "aladac",
     "url": "https://github.com/aladac"
