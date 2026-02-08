@@ -50,7 +50,7 @@ function withLogging<T extends Record<string, unknown>>(
 }
 
 const server = new McpServer({
-  name: 'browse-mcp',
+  name: 'browse',
   version: pkg.version,
 });
 

@@ -40,7 +40,7 @@ function withLogging(cmd, fn) {
     };
 }
 const server = new McpServer({
-    name: 'browse-mcp',
+    name: 'browse',
     version: pkg.version,
 });
 // Navigation
