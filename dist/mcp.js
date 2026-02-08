@@ -130,7 +130,7 @@ server.tool('session_save', 'Save the current session state (URL, cookies, local
     const title = await page.title();
     const cookies = await context.cookies();
     // Get localStorage and sessionStorage (runs in browser context)
-    const storage = await page.evaluate(`({
+    const storage = (await page.evaluate(`({
       localStorage: Object.fromEntries(
         Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))
           .filter(k => k !== null)
@@ -141,7 +141,7 @@ server.tool('session_save', 'Save the current session state (URL, cookies, local
           .filter(k => k !== null)
           .map(k => [k, sessionStorage.getItem(k) || ''])
       ),
-    })`);
+    })`));
     const sessionData = {
         url,
         title,
