@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { ClaudeBrowser } from './browser.js';
@@ -8,6 +8,7 @@ import { type CommandLike, type ResultLike, stderrLogger as log } from './logger
 
 const browser = new ClaudeBrowser({ headless: true, width: 1280, height: 800 });
 let launched = false;
+let currentScreenshotBuffer: Buffer | null = null;
 
 async function ensureLaunched(): Promise<void> {
   if (!launched) {
@@ -188,6 +189,124 @@ server.tool(
   })
 );
 
+// Session management
+server.tool(
+  'close',
+  'Close the browser and end the current session',
+  {},
+  withLogging('close', async () => {
+    if (launched) {
+      await browser.close();
+      launched = false;
+    }
+    return textResult(JSON.stringify({ ok: true, message: 'Browser closed' }));
+  })
+);
+
+server.tool(
+  'session_save',
+  'Save the current session state (URL, cookies, localStorage, sessionStorage) to a JSON file',
+  {
+    path: z.string().optional().default('session.json').describe('Path to save session file'),
+  },
+  withLogging('session_save', async ({ path }) => {
+    await ensureLaunched();
+    const { writeFile } = await import('node:fs/promises');
+    const { resolve } = await import('node:path');
+
+    const page = browser.getPage();
+    const context = browser.getContext();
+    if (!page || !context) {
+      return textResult(JSON.stringify({ ok: false, error: 'No active page' }));
+    }
+
+    const url = page.url();
+    const title = await page.title();
+    const cookies = await context.cookies();
+
+    // Get localStorage and sessionStorage (runs in browser context)
+    const storage = await page.evaluate(`({
+      localStorage: Object.fromEntries(
+        Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i))
+          .filter(k => k !== null)
+          .map(k => [k, localStorage.getItem(k) || ''])
+      ),
+      sessionStorage: Object.fromEntries(
+        Array.from({ length: sessionStorage.length }, (_, i) => sessionStorage.key(i))
+          .filter(k => k !== null)
+          .map(k => [k, sessionStorage.getItem(k) || ''])
+      ),
+    })`) as { localStorage: Record<string, string>; sessionStorage: Record<string, string> };
+
+    const sessionData = {
+      url,
+      title,
+      cookies,
+      localStorage: storage.localStorage,
+      sessionStorage: storage.sessionStorage,
+      savedAt: new Date().toISOString(),
+    };
+
+    const resolvedPath = resolve(path);
+    await writeFile(resolvedPath, JSON.stringify(sessionData, null, 2));
+    return textResult(
+      JSON.stringify({ ok: true, path: resolvedPath, url, cookieCount: cookies.length })
+    );
+  })
+);
+
+server.tool(
+  'session_restore',
+  'Restore a previously saved session state from a JSON file',
+  {
+    path: z.string().optional().default('session.json').describe('Path to session file'),
+  },
+  withLogging('session_restore', async ({ path }) => {
+    await ensureLaunched();
+    const { readFile } = await import('node:fs/promises');
+    const { resolve } = await import('node:path');
+
+    const resolvedPath = resolve(path);
+    const data = JSON.parse(await readFile(resolvedPath, 'utf-8'));
+
+    const page = browser.getPage();
+    const context = browser.getContext();
+    if (!page || !context) {
+      return textResult(JSON.stringify({ ok: false, error: 'No active page' }));
+    }
+
+    // Restore cookies first
+    if (data.cookies?.length > 0) {
+      await context.addCookies(data.cookies);
+    }
+
+    // Navigate to saved URL
+    if (data.url) {
+      await page.goto(data.url, { waitUntil: 'networkidle' });
+    }
+
+    // Restore storage (runs in browser context)
+    const local = data.localStorage || {};
+    const session = data.sessionStorage || {};
+    await page.evaluate(
+      `((data) => {
+        for (const [k, v] of Object.entries(data.local)) localStorage.setItem(k, v);
+        for (const [k, v] of Object.entries(data.session)) sessionStorage.setItem(k, v);
+      })(${JSON.stringify({ local, session })})`
+    );
+
+    return textResult(
+      JSON.stringify({
+        ok: true,
+        url: data.url,
+        title: data.title,
+        cookiesRestored: data.cookies?.length || 0,
+        savedAt: data.savedAt,
+      })
+    );
+  })
+);
+
 // Image processing
 server.tool(
   'favicon',
@@ -290,7 +409,327 @@ server.tool(
   })
 );
 
+// ============================================================================
+// MCP Resources - Browser state accessible via @ mentions
+// ============================================================================
+
+// Resource: browser://state - Current browser state (URL, title, launched status)
+server.resource(
+  'Browser State',
+  'browser://state',
+  {
+    description: 'Current browser state including URL, title, and status',
+    mimeType: 'application/json',
+  },
+  async () => {
+    if (!launched) {
+      return {
+        contents: [
+          {
+            uri: 'browser://state',
+            mimeType: 'application/json',
+            text: JSON.stringify({ launched: false, url: null, title: null }),
+          },
+        ],
+      };
+    }
+    const state = await browser.getUrl();
+    return {
+      contents: [
+        {
+          uri: 'browser://state',
+          mimeType: 'application/json',
+          text: JSON.stringify({ launched: true, ...state }),
+        },
+      ],
+    };
+  }
+);
+
+// Resource: browser://html - Current page HTML content
+server.resource(
+  'Page HTML',
+  'browser://html',
+  { description: 'HTML content of the current page (truncated to 10KB)', mimeType: 'text/html' },
+  async () => {
+    if (!launched) {
+      return {
+        contents: [
+          {
+            uri: 'browser://html',
+            mimeType: 'text/plain',
+            text: 'Browser not launched. Use goto tool first.',
+          },
+        ],
+      };
+    }
+    const html = await browser.getHtml(false);
+    return {
+      contents: [
+        {
+          uri: 'browser://html',
+          mimeType: 'text/html',
+          text: html,
+        },
+      ],
+    };
+  }
+);
+
+// Resource: browser://html/full - Full page HTML content
+server.resource(
+  'Full Page HTML',
+  'browser://html/full',
+  { description: 'Complete HTML content of the current page', mimeType: 'text/html' },
+  async () => {
+    if (!launched) {
+      return {
+        contents: [
+          {
+            uri: 'browser://html/full',
+            mimeType: 'text/plain',
+            text: 'Browser not launched. Use goto tool first.',
+          },
+        ],
+      };
+    }
+    const html = await browser.getHtml(true);
+    return {
+      contents: [
+        {
+          uri: 'browser://html/full',
+          mimeType: 'text/html',
+          text: html,
+        },
+      ],
+    };
+  }
+);
+
+// Resource: browser://screenshot - Current page screenshot (base64)
+server.resource(
+  'Page Screenshot',
+  'browser://screenshot',
+  { description: 'Screenshot of the current page as base64 PNG', mimeType: 'image/png' },
+  async () => {
+    if (!launched) {
+      return {
+        contents: [
+          {
+            uri: 'browser://screenshot',
+            mimeType: 'text/plain',
+            text: 'Browser not launched. Use goto tool first.',
+          },
+        ],
+      };
+    }
+    const result = await browser.screenshot(undefined, false);
+    currentScreenshotBuffer = result.buffer || null;
+    return {
+      contents: [
+        {
+          uri: 'browser://screenshot',
+          mimeType: 'image/png',
+          blob: result.buffer?.toString('base64') || '',
+        },
+      ],
+    };
+  }
+);
+
+// ============================================================================
+// MCP Prompts - Common workflows accessible via / commands
+// ============================================================================
+
+// Prompt: Analyze current page
+server.prompt('analyze_page', 'Analyze the current page content and structure', async () => {
+  if (!launched) {
+    return {
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: 'The browser is not launched yet. Please use the goto tool to navigate to a URL first, then I can analyze the page.',
+          },
+        },
+      ],
+    };
+  }
+  const state = await browser.getUrl();
+  const html = await browser.getHtml(false);
+  return {
+    messages: [
+      {
+        role: 'user',
+        content: {
+          type: 'text',
+          text: `Analyze the following webpage:
+
+URL: ${state.url}
+Title: ${state.title}
+
+HTML Content (truncated):
+\`\`\`html
+${html}
+\`\`\`
+
+Please provide:
+1. A summary of the page purpose and content
+2. Key interactive elements (forms, buttons, links)
+3. Any notable structure or patterns
+4. Suggestions for what actions might be useful`,
+        },
+      },
+    ],
+  };
+});
+
+// Prompt: Extract data from page
+server.prompt(
+  'extract_data',
+  'Extract structured data from the current page',
+  { selector: z.string().optional().describe('CSS selector to focus extraction (optional)') },
+  async ({ selector }) => {
+    if (!launched) {
+      return {
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: 'The browser is not launched yet. Please use the goto tool to navigate to a URL first.',
+            },
+          },
+        ],
+      };
+    }
+    const state = await browser.getUrl();
+    let elements: { tag: string; text: string; attributes: Record<string, string> }[] = [];
+    if (selector) {
+      elements = await browser.query(selector);
+    }
+    return {
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Extract structured data from this webpage:
+
+URL: ${state.url}
+Title: ${state.title}
+${selector ? `\nSelector: ${selector}\nMatched Elements: ${elements.length}\n\nElements:\n${JSON.stringify(elements, null, 2)}` : ''}
+
+Please:
+1. Use the query tool to find relevant data elements
+2. Extract and structure the data in a useful format (JSON, table, etc.)
+3. Identify patterns that could help with similar pages`,
+          },
+        },
+      ],
+    };
+  }
+);
+
+// Prompt: Navigate and interact
+server.prompt(
+  'navigate_to',
+  'Navigate to a URL and describe what you find',
+  { url: z.string().url().describe('URL to navigate to') },
+  async ({ url }) => {
+    return {
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Please navigate to ${url} and:
+
+1. Use the goto tool to navigate there
+2. Take a screenshot to see the page
+3. Describe what you see
+4. Identify the main interactive elements
+5. Suggest what actions might be useful
+
+Start by navigating to the URL.`,
+          },
+        },
+      ],
+    };
+  }
+);
+
+// Prompt: Fill form
+server.prompt(
+  'fill_form',
+  'Help fill out a form on the current page',
+  { formData: z.string().optional().describe('JSON object with field names and values to fill') },
+  async ({ formData }) => {
+    if (!launched) {
+      return {
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: 'The browser is not launched yet. Please use the goto tool to navigate to a page with a form first.',
+            },
+          },
+        ],
+      };
+    }
+    const state = await browser.getUrl();
+    return {
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Help fill out a form on this page:
+
+URL: ${state.url}
+Title: ${state.title}
+${formData ? `\nData to fill: ${formData}` : ''}
+
+Please:
+1. Use the query tool to find form inputs (input, textarea, select)
+2. Identify required fields and their types
+3. Use the type tool to fill in each field
+4. Report what was filled and any issues encountered`,
+          },
+        },
+      ],
+    };
+  }
+);
+
+// Prompt: Screenshot comparison
+server.prompt('compare_screenshots', 'Take screenshots and compare changes', async () => {
+  return {
+    messages: [
+      {
+        role: 'user',
+        content: {
+          type: 'text',
+          text: `I'll help you compare page states:
+
+1. Take an initial screenshot
+2. Perform some action (click, navigate, etc.)
+3. Take another screenshot
+4. Describe the differences
+
+What action would you like me to perform between screenshots?`,
+        },
+      },
+    ],
+  };
+});
+
+// ============================================================================
 // Start server
+// ============================================================================
+
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);

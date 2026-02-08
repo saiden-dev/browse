@@ -85,9 +85,45 @@ curl -X POST localhost:3000 -d '{"cmd":"wait","ms":2000}'
 curl -X POST localhost:3000 -d '{"cmd":"close"}'
 ```
 
-## MCP Server (Model Context Protocol)
+## Claude Code Plugin (Recommended)
 
-Use with Claude Code or any MCP-compatible client:
+Install as a Claude Code plugin for the best integration:
+
+```bash
+# Install the plugin
+claude plugin install https://github.com/aladac/claude-browse
+
+# Or load temporarily during development
+claude --plugin-dir /path/to/claude-browse
+```
+
+### Plugin Features
+
+**Slash Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `/browse:start` | Start an interactive browsing session |
+| `/browse:goto <url>` | Navigate to URL and describe findings |
+| `/browse:screenshot` | Take a screenshot of the current page |
+| `/browse:scrape <url>` | Scrape content from a webpage |
+| `/browse:analyze` | Analyze current page content and structure |
+| `/browse:extract [selector]` | Extract structured data from page |
+| `/browse:fill [data]` | Help fill out forms |
+| `/browse:compare [action]` | Compare page states before/after action |
+
+**MCP Resources (@ mentions):**
+
+| Resource | Description |
+|----------|-------------|
+| `@claude-browse:browser://state` | Browser state (URL, title, launched) |
+| `@claude-browse:browser://html` | Page HTML (truncated to 10KB) |
+| `@claude-browse:browser://html/full` | Complete page HTML |
+| `@claude-browse:browser://screenshot` | Page screenshot as base64 PNG |
+
+## MCP Server (Standalone)
+
+Use with any MCP-compatible client:
 
 ```bash
 # Run the MCP server
@@ -106,7 +142,9 @@ Add to Claude Code's MCP config (`~/.claude/settings.json`):
 }
 ```
 
-Available tools: `goto`, `click`, `type`, `query`, `screenshot`, `url`, `html`, `back`, `forward`, `reload`, `wait`, `eval`
+**Available Tools:** `goto`, `click`, `type`, `query`, `screenshot`, `url`, `html`, `back`, `forward`, `reload`, `wait`, `eval`
+
+**Image Processing Tools:** `favicon`, `convert`, `resize`, `crop`, `compress`, `thumbnail`
 
 ## Programmatic Usage
 

@@ -44,6 +44,16 @@ export class ClaudeBrowser {
     return this.page;
   }
 
+  /** Get the current page instance (for advanced usage) */
+  getPage(): Page | null {
+    return this.page;
+  }
+
+  /** Get the browser context (for advanced usage like cookies) */
+  getContext(): BrowserContext | null {
+    return this.context;
+  }
+
   async goto(url: string): Promise<{ url: string; title: string }> {
     const page = this.ensurePage();
     await page.goto(url, { waitUntil: 'networkidle' });
