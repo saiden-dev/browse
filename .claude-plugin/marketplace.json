@@ -1,0 +1,15 @@
+{
+  "name": "browse-marketplace",
+  "description": "Browser automation plugin for Claude Code",
+  "owner": {
+    "name": "aladac",
+    "url": "https://github.com/aladac"
+  },
+  "plugins": [
+    {
+      "name": "browse",
+      "description": "Browser automation and image processing tools using Playwright WebKit",
+      "source": "./"
+    }
+  ]
+}
