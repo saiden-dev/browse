@@ -1,7 +1,7 @@
 {
   "name": "browse",
   "description": "Browser automation and image processing tools for Claude Code using Playwright WebKit",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "author": {
     "name": "aladac",
     "url": "https://github.com/aladac"
