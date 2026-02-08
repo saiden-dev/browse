@@ -15,8 +15,5 @@
       "mcp__claude-browse__wait"
     ]
   },
-  "enabledMcpjsonServers": [
-    "claude-browse"
-  ],
   "enableAllProjectMcpServers": true
 }
