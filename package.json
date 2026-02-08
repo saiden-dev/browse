@@ -1,5 +1,5 @@
 {
-  "name": "@aladac/claude-browse",
+  "name": "@saiden/browse",
   "version": "0.2.0",
   "description": "Headless browser automation for Claude Code using Playwright WebKit",
   "type": "module",

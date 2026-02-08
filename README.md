@@ -1,9 +1,9 @@
-# @aladac/claude-browse
+# @saiden/browse
 
-[![npm version](https://img.shields.io/npm/v/@aladac/claude-browse.svg)](https://www.npmjs.com/package/@aladac/claude-browse)
-[![CI](https://github.com/aladac/claude-browse/actions/workflows/ci.yml/badge.svg)](https://github.com/aladac/claude-browse/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@saiden/browse.svg)](https://www.npmjs.com/package/@saiden/browse)
+[![CI](https://github.com/saiden-dev/browse/actions/workflows/ci.yml/badge.svg)](https://github.com/saiden-dev/browse/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/node/v/@aladac/claude-browse.svg)](https://nodejs.org)
+[![Node.js](https://img.shields.io/node/v/@saiden/browse.svg)](https://nodejs.org)
 
 #### Headless browser automation for Claude Code using Playwright WebKit.
 
@@ -12,7 +12,7 @@
 ## Installation
 
 ```bash
-npm install @aladac/claude-browse
+npm install @saiden/browse
 npx playwright install webkit
 ```
 
@@ -91,7 +91,7 @@ Install as a Claude Code plugin for the best integration:
 
 ```bash
 # Install from GitHub
-claude plugin install github:aladac/claude-browse
+claude plugin install github:saiden-dev/browse
 
 # Or install from local path
 claude plugin install /path/to/claude-browse
@@ -151,7 +151,7 @@ Add to Claude Code's MCP config (`~/.claude/settings.json`):
 ## Programmatic Usage
 
 ```typescript
-import { ClaudeBrowser, startServer } from '@aladac/claude-browse';
+import { ClaudeBrowser, startServer } from '@saiden/browse';
 
 // Direct browser control
 const browser = new ClaudeBrowser({
