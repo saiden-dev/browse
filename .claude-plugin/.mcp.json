@@ -1,5 +1,5 @@
 {
-  "claude-browse": {
+  "browse-mcp": {
     "command": "browse-mcp",
     "args": []
   }
