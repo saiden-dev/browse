@@ -90,11 +90,12 @@ curl -X POST localhost:3000 -d '{"cmd":"close"}'
 Install as a Claude Code plugin for the best integration:
 
 ```bash
-# Install from GitHub
-claude plugin install github:saiden-dev/browse
+# Via marketplace (recommended)
+claude plugin marketplace add https://github.com/saiden-dev/claude-plugins
+claude plugin install browse
 
-# Or install from local path
-claude plugin install /path/to/claude-browse
+# Or direct from GitHub
+claude plugin install github:saiden-dev/browse
 ```
 
 **Prerequisites:** Node.js 18+ (the MCP server runs via npx)
@@ -113,15 +114,18 @@ claude plugin install /path/to/claude-browse
 | `/browse:extract [selector]` | Extract structured data from page |
 | `/browse:fill [data]` | Help fill out forms |
 | `/browse:compare [action]` | Compare page states before/after action |
+| `/browse:save` | Save current session state to file |
+| `/browse:restore` | Restore a previously saved session |
+| `/browse:end` | End the browsing session and close browser |
 
 **MCP Resources (@ mentions):**
 
 | Resource | Description |
 |----------|-------------|
-| `@claude-browse:browser://state` | Browser state (URL, title, launched) |
-| `@claude-browse:browser://html` | Page HTML (truncated to 10KB) |
-| `@claude-browse:browser://html/full` | Complete page HTML |
-| `@claude-browse:browser://screenshot` | Page screenshot as base64 PNG |
+| `@browse:browser://state` | Browser state (URL, title, launched) |
+| `@browse:browser://html` | Page HTML (truncated to 10KB) |
+| `@browse:browser://html/full` | Complete page HTML |
+| `@browse:browser://screenshot` | Page screenshot as base64 PNG |
 
 ## MCP Server (Standalone)
 
