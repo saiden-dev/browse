@@ -1,10 +1,15 @@
 #!/usr/bin/env node
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { ClaudeBrowser } from './browser.js';
 import * as image from './image.js';
 import { stderrLogger as log } from './logger.js';
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf-8'));
 const browser = new ClaudeBrowser({ headless: true, width: 1280, height: 800 });
 let launched = false;
 let currentScreenshotBuffer = null;
@@ -36,7 +41,7 @@ function withLogging(cmd, fn) {
 }
 const server = new McpServer({
     name: 'claude-browse',
-    version: '0.1.0',
+    version: pkg.version,
 });
 // Navigation
 server.tool('goto', 'Navigate to a URL', { url: z.string().url() }, withLogging('goto', async ({ url }) => {

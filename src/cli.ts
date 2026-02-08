@@ -1,10 +1,15 @@
 #!/usr/bin/env node
-import { resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { ClaudeBrowser } from './browser.js';
 import * as image from './image.js';
 import { startServer } from './server.js';
 import type { ElementInfo } from './types.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf-8'));
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -250,7 +255,7 @@ async function runBrowserMode(): Promise<void> {
 
 async function main(): Promise<void> {
   if (values.version) {
-    console.log('claude-browse 0.1.0');
+    console.log(`claude-browse ${pkg.version}`);
     process.exit(0);
   }
 
