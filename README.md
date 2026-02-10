@@ -6,9 +6,6 @@
 [![Node.js](https://img.shields.io/node/v/@saiden/browse.svg)](https://nodejs.org)
 
 #### Headless browser automation for Claude Code using Playwright WebKit.
-
-<img width="1040" height="588" alt="image" src="https://github.com/user-attachments/assets/e5436f5c-b46d-4d1b-8f5a-54044969d095" />
-
 ## Installation
 
 ```bash
