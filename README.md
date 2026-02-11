@@ -37,65 +37,19 @@ browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
 browse -i --headed https://example.com
 ```
 
-## Server Mode
-
-Start a persistent browser server that accepts commands via HTTP:
-
-```bash
-browse -s 3000           # headless
-browse -s 3000 --headed  # visible browser
-```
-
-Send commands:
-
-```bash
-# Navigate
-curl -X POST localhost:3000 -d '{"cmd":"goto","url":"https://example.com"}'
-
-# Click
-curl -X POST localhost:3000 -d '{"cmd":"click","selector":"button.submit"}'
-
-# Type
-curl -X POST localhost:3000 -d '{"cmd":"type","selector":"#search","text":"hello"}'
-
-# Query elements
-curl -X POST localhost:3000 -d '{"cmd":"query","selector":"a[href]"}'
-
-# Screenshot
-curl -X POST localhost:3000 -d '{"cmd":"screenshot","path":"page.png"}'
-
-# Get current URL
-curl -X POST localhost:3000 -d '{"cmd":"url"}'
-
-# Get page HTML
-curl -X POST localhost:3000 -d '{"cmd":"html"}'
-
-# Navigation
-curl -X POST localhost:3000 -d '{"cmd":"back"}'
-curl -X POST localhost:3000 -d '{"cmd":"forward"}'
-curl -X POST localhost:3000 -d '{"cmd":"reload"}'
-
-# Wait
-curl -X POST localhost:3000 -d '{"cmd":"wait","ms":2000}'
-
-# Close server
-curl -X POST localhost:3000 -d '{"cmd":"close"}'
-```
-
 ## Claude Code Plugin (Recommended)
 
 Install as a Claude Code plugin for the best integration:
 
 ```bash
-# Via marketplace (recommended)
-claude plugin marketplace add https://github.com/saiden-dev/claude-plugins
-claude plugin install browse
-
-# Or direct from GitHub
+# Install from GitHub
 claude plugin install github:saiden-dev/browse
+
+# Or load locally for development
+claude --plugin-dir /path/to/claude-browse
 ```
 
-**Prerequisites:** Node.js 18+ (the MCP server runs via npx)
+**Prerequisites:** Node.js 18+, Playwright WebKit (`npx playwright install webkit`)
 
 ### Plugin Features
 
@@ -160,6 +114,7 @@ Add to Claude Code's MCP config (`~/.claude/settings.json`):
 | `upload` | Upload files to a file input |
 | `back`, `forward`, `reload` | Browser navigation |
 | `wait` | Wait for a specified time |
+| `close` | Close the browser and end session |
 
 **Debugging & Inspection:**
 | Tool | Description |
@@ -222,9 +177,8 @@ Add to Claude Code's MCP config (`~/.claude/settings.json`):
 ## Programmatic Usage
 
 ```typescript
-import { ClaudeBrowser, startServer } from '@saiden/browse';
+import { ClaudeBrowser } from '@saiden/browse';
 
-// Direct browser control
 const browser = new ClaudeBrowser({
   headless: true,
   width: 1280,
@@ -242,10 +196,6 @@ await browser.type('#input', 'hello');
 await browser.screenshot('page.png');
 
 await browser.close();
-
-// Or start a server
-const server = await startServer({ port: 3000, headless: false });
-// Server runs until closed via HTTP or SIGINT
 ```
 
 ## API
@@ -303,12 +253,6 @@ const server = await startServer({ port: 3000, headless: false });
 
 **Commands:**
 - `executeCommand(cmd)` - Execute a command object
-
-### BrowserServer
-
-- `start()` - Start HTTP server
-- `stop()` - Stop server and close browser
-- `getPort()` - Get server port
 
 ## License
 
