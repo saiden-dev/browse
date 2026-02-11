@@ -62,6 +62,27 @@ Commands are typed objects with a `cmd` discriminator:
 
 All commands return `{ ok: true, ...data }` or `{ ok: false, error: string }`.
 
+### Command Categories
+
+| Category | Commands |
+|----------|----------|
+| Navigation | `goto`, `back`, `forward`, `reload`, `wait` |
+| Interaction | `click`, `type`, `hover`, `select`, `keys`, `scroll`, `upload` |
+| Content | `query`, `screenshot`, `url`, `html`, `eval` |
+| Debugging | `console`, `errors`, `network`, `intercept`, `metrics`, `a11y` |
+| Storage | `cookies`, `storage`, `dialog`, `session_save`, `session_restore` |
+| Viewport | `viewport`, `emulate` |
+| Image | `favicon`, `convert`, `resize`, `crop`, `compress`, `thumbnail` |
+
+### Event Listeners
+
+The browser automatically captures events when launched:
+
+- **Console**: `page.on('console')` - Captures all console messages
+- **Errors**: `page.on('pageerror')` - Captures uncaught exceptions
+- **Network**: `page.on('request/response/requestfailed')` - Captures all network activity
+- **Dialogs**: `page.on('dialog')` - Handles alert/confirm/prompt dialogs
+
 ## CLI Options
 
 Key flags: `-s <port>` (server mode), `-q <selector>` (query), `-c <selector>` (click), `-t <sel>=<text>` (type), `-i` (interactive), `--headed` (visible browser).
@@ -81,3 +102,46 @@ browse-mcp
 ```
 
 The MCP server (`src/mcp.ts`) exposes all browser commands as tools. It uses stdio transport and auto-launches the browser on first command.
+
+### Debugging Tools
+
+```bash
+# Get console logs
+curl localhost:13373 -d '{"cmd":"console","level":"error"}'
+
+# Get page errors
+curl localhost:13373 -d '{"cmd":"errors"}'
+
+# Get network requests (all or failed only)
+curl localhost:13373 -d '{"cmd":"network","filter":"failed"}'
+
+# Block requests matching pattern
+curl localhost:13373 -d '{"cmd":"intercept","action":"block","pattern":"**/*ads*"}'
+
+# Mock API response
+curl localhost:13373 -d '{"cmd":"intercept","action":"mock","pattern":"**/api/*","status":200,"body":"{\"mock\":true}"}'
+
+# Get performance metrics
+curl localhost:13373 -d '{"cmd":"metrics","resources":true}'
+
+# Get accessibility tree
+curl localhost:13373 -d '{"cmd":"a11y"}'
+
+# Emulate mobile device
+curl localhost:13373 -d '{"cmd":"emulate","device":"iPhone 13"}'
+```
+
+### MCP Resources
+
+Resources can be accessed via `@` mentions in Claude Code:
+
+| Resource | Description |
+|----------|-------------|
+| `browser://state` | Current browser state |
+| `browser://console` | Console messages |
+| `browser://network` | All network requests |
+| `browser://network/failed` | Failed requests only |
+| `browser://errors` | Page errors |
+| `browser://a11y` | Accessibility tree |
+| `browser://html` | Page HTML (truncated) |
+| `browser://screenshot` | Page screenshot |

@@ -145,9 +145,79 @@ Add to Claude Code's MCP config (`~/.claude/settings.json`):
 }
 ```
 
-**Available Tools:** `goto`, `click`, `type`, `query`, `screenshot`, `url`, `html`, `back`, `forward`, `reload`, `wait`, `eval`
+### MCP Tools Reference
 
-**Image Processing Tools:** `favicon`, `convert`, `resize`, `crop`, `compress`, `thumbnail`
+**Navigation & Interaction:**
+| Tool | Description |
+|------|-------------|
+| `goto` | Navigate to a URL |
+| `click` | Click on an element |
+| `type` | Type text into an input field |
+| `hover` | Hover over an element |
+| `select` | Select option(s) in a dropdown |
+| `keys` | Send keyboard shortcuts (e.g., "Enter", "Control+a") |
+| `scroll` | Scroll page or element into view |
+| `upload` | Upload files to a file input |
+| `back`, `forward`, `reload` | Browser navigation |
+| `wait` | Wait for a specified time |
+
+**Debugging & Inspection:**
+| Tool | Description |
+|------|-------------|
+| `console` | Get captured console messages (log, warn, error, etc.) |
+| `errors` | Get page errors (uncaught exceptions) |
+| `network` | Get captured network requests/responses |
+| `intercept` | Block or mock network requests |
+| `metrics` | Get performance metrics and DOM statistics |
+| `a11y` | Get accessibility tree snapshot |
+
+**Page Content:**
+| Tool | Description |
+|------|-------------|
+| `query` | Query elements by CSS selector |
+| `screenshot` | Take a screenshot |
+| `url` | Get current URL and title |
+| `html` | Get page HTML content |
+| `eval` | Execute JavaScript in browser context |
+
+**Storage & Session:**
+| Tool | Description |
+|------|-------------|
+| `cookies` | Get, set, delete, or clear cookies |
+| `storage` | Access localStorage or sessionStorage |
+| `dialog` | Configure how browser dialogs are handled |
+| `session_save` | Save session state to file |
+| `session_restore` | Restore session from file |
+
+**Viewport & Emulation:**
+| Tool | Description |
+|------|-------------|
+| `viewport` | Resize browser viewport |
+| `emulate` | Emulate a mobile device |
+
+**Image Processing:**
+| Tool | Description |
+|------|-------------|
+| `favicon` | Generate favicon set from image |
+| `convert` | Convert image format |
+| `resize` | Resize image |
+| `crop` | Crop image |
+| `compress` | Compress image |
+| `thumbnail` | Create thumbnail |
+
+### MCP Resources
+
+| Resource | Description |
+|----------|-------------|
+| `browser://state` | Browser state (URL, title, launched) |
+| `browser://html` | Page HTML (truncated to 10KB) |
+| `browser://html/full` | Complete page HTML |
+| `browser://console` | Captured console messages |
+| `browser://network` | All network requests |
+| `browser://network/failed` | Failed requests only |
+| `browser://errors` | Page errors |
+| `browser://a11y` | Accessibility tree |
+| `browser://screenshot` | Page screenshot as base64 PNG |
 
 ## Programmatic Usage
 
@@ -182,18 +252,56 @@ const server = await startServer({ port: 3000, headless: false });
 
 ### ClaudeBrowser
 
+**Lifecycle:**
 - `launch()` - Launch the browser
 - `close()` - Close the browser
+- `newPage()` - Open new page
+
+**Navigation:**
 - `goto(url)` - Navigate to URL
+- `back()` / `forward()` / `reload()` - Browser navigation
+- `wait(ms)` - Wait for timeout
+
+**Interaction:**
 - `click(selector)` - Click element
 - `type(selector, text)` - Type into input
+- `hover(selector)` - Hover over element
+- `select(selector, value)` - Select dropdown option(s)
+- `keys(keys)` - Press keyboard keys
+- `scroll(selector?, x?, y?)` - Scroll page or element
+- `upload(selector, files)` - Upload files
+
+**Content:**
 - `query(selector)` - Query elements, returns attributes
 - `screenshot(path?, fullPage?)` - Take screenshot
 - `getUrl()` - Get current URL and title
 - `getHtml(full?)` - Get page HTML
-- `back()` / `forward()` / `reload()` - Navigation
-- `wait(ms)` - Wait for timeout
-- `newPage()` - Open new page
+- `eval(script)` - Execute JavaScript
+
+**Debugging:**
+- `getConsole(level?, clear?)` - Get console messages
+- `getErrors(clear?)` - Get page errors
+- `getNetwork(filter?, clear?)` - Get network requests
+- `getMetrics(includeResources?)` - Get performance metrics
+- `getA11y(selector?)` - Get accessibility tree
+
+**Storage:**
+- `getCookies(name?)` - Get cookies
+- `setCookie(name, value, url?)` - Set cookie
+- `deleteCookie(name)` / `clearCookies()` - Remove cookies
+- `getStorage(type, key?)` - Get localStorage/sessionStorage
+- `setStorage(type, key, value)` - Set storage item
+- `deleteStorage(type, key)` / `clearStorage(type)` - Remove storage
+
+**Interception:**
+- `addIntercept(pattern, action, response?)` - Block or mock requests
+- `clearIntercepts()` - Remove all intercepts
+
+**Viewport:**
+- `setViewport(width, height)` - Resize viewport
+- `emulate(device)` - Emulate device (e.g., 'iPhone 13')
+
+**Commands:**
 - `executeCommand(cmd)` - Execute a command object
 
 ### BrowserServer

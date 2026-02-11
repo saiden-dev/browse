@@ -259,6 +259,223 @@ server.tool(
   })
 );
 
+// Page errors
+server.tool(
+  'errors',
+  'Get captured page errors (uncaught exceptions and unhandled promise rejections)',
+  {
+    clear: z.boolean().optional().default(false).describe('Clear errors after retrieving'),
+  },
+  withLogging('errors', async ({ clear }) => {
+    await ensureLaunched();
+    const errors = browser.getErrors(clear);
+    return textResult(JSON.stringify({ ok: true, count: errors.length, errors }));
+  })
+);
+
+// Performance metrics
+server.tool(
+  'metrics',
+  'Get page performance metrics and DOM statistics',
+  {
+    resources: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('Include individual resource timing entries'),
+  },
+  withLogging('metrics', async ({ resources }) => {
+    await ensureLaunched();
+    const metrics = await browser.getMetrics(resources);
+    return textResult(JSON.stringify({ ok: true, metrics }));
+  })
+);
+
+// Accessibility
+server.tool(
+  'a11y',
+  'Get accessibility tree snapshot for the page or a specific element',
+  {
+    selector: z.string().optional().describe('CSS selector to get subtree for specific element'),
+  },
+  withLogging('a11y', async ({ selector }) => {
+    await ensureLaunched();
+    const a11y = await browser.getA11y(selector);
+    return textResult(JSON.stringify({ ok: true, a11y }));
+  })
+);
+
+// Dialog handling
+server.tool(
+  'dialog',
+  'Configure how browser dialogs (alert, confirm, prompt) are handled',
+  {
+    action: z
+      .enum(['status', 'accept', 'dismiss', 'config'])
+      .describe(
+        'Action: status (get history), accept (auto-accept), dismiss (auto-dismiss), config (set both)'
+      ),
+    text: z.string().optional().describe('Text to enter for prompt dialogs when accepting'),
+    autoAccept: z.boolean().optional().describe('Auto-accept dialogs (for config action)'),
+    autoDismiss: z.boolean().optional().describe('Auto-dismiss dialogs (for config action)'),
+  },
+  withLogging('dialog', async ({ action, text, autoAccept, autoDismiss }) => {
+    await ensureLaunched();
+    if (action === 'status') {
+      return textResult(
+        JSON.stringify({
+          ok: true,
+          dialogs: browser.getDialogs(),
+          config: browser.getDialogConfig(),
+        })
+      );
+    }
+    if (action === 'accept') {
+      browser.setDialogConfig({ autoAccept: true, autoDismiss: false, text });
+      return textResult(JSON.stringify({ ok: true, config: browser.getDialogConfig() }));
+    }
+    if (action === 'dismiss') {
+      browser.setDialogConfig({ autoAccept: false, autoDismiss: true });
+      return textResult(JSON.stringify({ ok: true, config: browser.getDialogConfig() }));
+    }
+    browser.setDialogConfig({ autoAccept, autoDismiss, text });
+    return textResult(JSON.stringify({ ok: true, config: browser.getDialogConfig() }));
+  })
+);
+
+// Cookies
+server.tool(
+  'cookies',
+  'Get, set, delete, or clear browser cookies',
+  {
+    action: z.enum(['get', 'set', 'delete', 'clear']).describe('Action to perform'),
+    name: z.string().optional().describe('Cookie name (for get/set/delete)'),
+    value: z.string().optional().describe('Cookie value (for set)'),
+    url: z.string().optional().describe('URL for cookie (for set, defaults to current page)'),
+  },
+  withLogging('cookies', async ({ action, name, value, url }) => {
+    await ensureLaunched();
+    const result = await browser.executeCommand({ cmd: 'cookies', action, name, value, url });
+    return textResult(JSON.stringify(result));
+  })
+);
+
+// Storage
+server.tool(
+  'storage',
+  'Get, set, delete, or clear localStorage or sessionStorage',
+  {
+    type: z.enum(['local', 'session']).describe('Storage type'),
+    action: z.enum(['get', 'set', 'delete', 'clear']).describe('Action to perform'),
+    key: z.string().optional().describe('Storage key'),
+    value: z.string().optional().describe('Value to set'),
+  },
+  withLogging('storage', async ({ type, action, key, value }) => {
+    await ensureLaunched();
+    const result = await browser.executeCommand({ cmd: 'storage', type, action, key, value });
+    return textResult(JSON.stringify(result));
+  })
+);
+
+// Hover
+server.tool(
+  'hover',
+  'Hover over an element to trigger hover states',
+  { selector: z.string().describe('CSS selector of element to hover') },
+  withLogging('hover', async ({ selector }) => {
+    await ensureLaunched();
+    await browser.hover(selector);
+    return textResult(JSON.stringify({ ok: true }));
+  })
+);
+
+// Select
+server.tool(
+  'select',
+  'Select option(s) in a dropdown/select element',
+  {
+    selector: z.string().describe('CSS selector of select element'),
+    value: z.union([z.string(), z.array(z.string())]).describe('Value(s) to select'),
+  },
+  withLogging('select', async ({ selector, value }) => {
+    await ensureLaunched();
+    const selected = await browser.select(selector, value);
+    return textResult(JSON.stringify({ ok: true, selected }));
+  })
+);
+
+// Keys
+server.tool(
+  'keys',
+  'Send keyboard keys or shortcuts (e.g., "Enter", "Control+a", "Escape")',
+  { keys: z.string().describe('Key or key combination to press') },
+  withLogging('keys', async ({ keys }) => {
+    await ensureLaunched();
+    await browser.keys(keys);
+    return textResult(JSON.stringify({ ok: true }));
+  })
+);
+
+// Upload
+server.tool(
+  'upload',
+  'Upload files to a file input element',
+  {
+    selector: z.string().describe('CSS selector of file input'),
+    files: z.array(z.string()).describe('Array of file paths to upload'),
+  },
+  withLogging('upload', async ({ selector, files }) => {
+    await ensureLaunched();
+    await browser.upload(selector, files);
+    return textResult(JSON.stringify({ ok: true }));
+  })
+);
+
+// Scroll
+server.tool(
+  'scroll',
+  'Scroll the page or an element into view',
+  {
+    selector: z.string().optional().describe('CSS selector to scroll into view'),
+    x: z.number().optional().describe('X position to scroll to (if no selector)'),
+    y: z.number().optional().describe('Y position to scroll to (if no selector)'),
+  },
+  withLogging('scroll', async ({ selector, x, y }) => {
+    await ensureLaunched();
+    await browser.scroll(selector, x, y);
+    return textResult(JSON.stringify({ ok: true }));
+  })
+);
+
+// Viewport
+server.tool(
+  'viewport',
+  'Resize the browser viewport',
+  {
+    width: z.number().describe('Viewport width in pixels'),
+    height: z.number().describe('Viewport height in pixels'),
+  },
+  withLogging('viewport', async ({ width, height }) => {
+    await ensureLaunched();
+    const viewport = await browser.setViewport(width, height);
+    return textResult(JSON.stringify({ ok: true, viewport }));
+  })
+);
+
+// Emulate
+server.tool(
+  'emulate',
+  'Emulate a mobile device (viewport, user agent, touch)',
+  {
+    device: z.string().describe('Device name (e.g., "iPhone 13", "Pixel 5", "iPad Pro")'),
+  },
+  withLogging('emulate', async ({ device }) => {
+    await ensureLaunched();
+    const viewport = await browser.emulate(device);
+    return textResult(JSON.stringify({ ok: true, device, viewport }));
+  })
+);
+
 // Utility
 server.tool(
   'wait',
@@ -675,6 +892,69 @@ server.resource(
           uri: 'browser://network/failed',
           mimeType: 'application/json',
           text: JSON.stringify({ launched: true, count: requests.length, requests }),
+        },
+      ],
+    };
+  }
+);
+
+// Resource: browser://errors - Captured page errors
+server.resource(
+  'Page Errors',
+  'browser://errors',
+  {
+    description: 'Uncaught exceptions and unhandled promise rejections',
+    mimeType: 'application/json',
+  },
+  async () => {
+    if (!launched) {
+      return {
+        contents: [
+          {
+            uri: 'browser://errors',
+            mimeType: 'application/json',
+            text: JSON.stringify({ launched: false, errors: [] }),
+          },
+        ],
+      };
+    }
+    const errors = browser.getErrors(false);
+    return {
+      contents: [
+        {
+          uri: 'browser://errors',
+          mimeType: 'application/json',
+          text: JSON.stringify({ launched: true, count: errors.length, errors }),
+        },
+      ],
+    };
+  }
+);
+
+// Resource: browser://a11y - Accessibility tree snapshot
+server.resource(
+  'Accessibility Tree',
+  'browser://a11y',
+  { description: 'Accessibility tree snapshot of the current page', mimeType: 'application/json' },
+  async () => {
+    if (!launched) {
+      return {
+        contents: [
+          {
+            uri: 'browser://a11y',
+            mimeType: 'application/json',
+            text: JSON.stringify({ launched: false, a11y: null }),
+          },
+        ],
+      };
+    }
+    const a11y = await browser.getA11y();
+    return {
+      contents: [
+        {
+          uri: 'browser://a11y',
+          mimeType: 'application/json',
+          text: JSON.stringify({ launched: true, a11y }),
         },
       ],
     };

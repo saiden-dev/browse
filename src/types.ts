@@ -171,6 +171,133 @@ export interface InterceptCommand {
   };
 }
 
+export interface PageError {
+  message: string;
+  stack?: string;
+  timestamp: number;
+}
+
+export interface ErrorsCommand {
+  cmd: 'errors';
+  clear?: boolean;
+}
+
+export interface MetricsData {
+  timing: {
+    domContentLoaded?: number;
+    load?: number;
+    firstPaint?: number;
+    firstContentfulPaint?: number;
+  };
+  dom: {
+    nodes: number;
+    scripts: number;
+    stylesheets: number;
+    images: number;
+  };
+  resources?: Array<{
+    name: string;
+    type: string;
+    duration: number;
+    size: number;
+  }>;
+}
+
+export interface MetricsCommand {
+  cmd: 'metrics';
+  resources?: boolean;
+}
+
+export interface A11yNode {
+  role: string;
+  name?: string;
+  value?: string;
+  description?: string;
+  children?: A11yNode[];
+}
+
+export interface A11yCommand {
+  cmd: 'a11y';
+  selector?: string;
+}
+
+export interface DialogEntry {
+  type: 'alert' | 'confirm' | 'prompt' | 'beforeunload';
+  message: string;
+  defaultValue?: string;
+  response?: string | boolean;
+  timestamp: number;
+}
+
+export interface DialogCommand {
+  cmd: 'dialog';
+  action: 'status' | 'accept' | 'dismiss' | 'config';
+  text?: string;
+  autoAccept?: boolean;
+  autoDismiss?: boolean;
+}
+
+// Phase 6: Storage & Cookies
+export interface CookiesCommand {
+  cmd: 'cookies';
+  action: 'get' | 'set' | 'delete' | 'clear';
+  name?: string;
+  value?: string;
+  domain?: string;
+  path?: string;
+  url?: string;
+}
+
+export interface StorageCommand {
+  cmd: 'storage';
+  type: 'local' | 'session';
+  action: 'get' | 'set' | 'delete' | 'clear';
+  key?: string;
+  value?: string;
+}
+
+// Phase 7: Advanced Interactions
+export interface HoverCommand {
+  cmd: 'hover';
+  selector: string;
+}
+
+export interface SelectCommand {
+  cmd: 'select';
+  selector: string;
+  value: string | string[];
+}
+
+export interface KeysCommand {
+  cmd: 'keys';
+  keys: string;
+}
+
+export interface UploadCommand {
+  cmd: 'upload';
+  selector: string;
+  files: string[];
+}
+
+export interface ScrollCommand {
+  cmd: 'scroll';
+  selector?: string;
+  x?: number;
+  y?: number;
+}
+
+// Phase 8: Viewport & Emulation
+export interface ViewportCommand {
+  cmd: 'viewport';
+  width: number;
+  height: number;
+}
+
+export interface EmulateCommand {
+  cmd: 'emulate';
+  device: string;
+}
+
 export type BrowserCommand =
   | GotoCommand
   | ClickCommand
@@ -194,7 +321,20 @@ export type BrowserCommand =
   | ThumbnailCommand
   | ConsoleCommand
   | NetworkCommand
-  | InterceptCommand;
+  | InterceptCommand
+  | ErrorsCommand
+  | MetricsCommand
+  | A11yCommand
+  | DialogCommand
+  | CookiesCommand
+  | StorageCommand
+  | HoverCommand
+  | SelectCommand
+  | KeysCommand
+  | UploadCommand
+  | ScrollCommand
+  | ViewportCommand
+  | EmulateCommand;
 
 // Response types
 export interface SuccessResponse {
@@ -218,6 +358,23 @@ export interface SuccessResponse {
   // Network fields
   requests?: NetworkEntry[];
   patterns?: string[];
+  // Error fields
+  errors?: PageError[];
+  // Metrics fields
+  metrics?: MetricsData;
+  // Accessibility fields
+  a11y?: A11yNode;
+  // Dialog fields
+  dialogs?: DialogEntry[];
+  dialogConfig?: { autoAccept: boolean; autoDismiss: boolean };
+  // Cookie fields
+  cookies?: Array<{ name: string; value: string; domain: string; path: string }>;
+  // Storage fields
+  storage?: Record<string, string>;
+  // Viewport fields
+  viewport?: { width: number; height: number };
+  // Selected values
+  selected?: string[];
 }
 
 export interface ErrorResponse {

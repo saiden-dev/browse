@@ -2,12 +2,19 @@ import { resolve } from 'node:path';
 import { type Browser, type BrowserContext, type Page, type Route, webkit } from 'playwright';
 import * as image from './image.js';
 import type {
+  A11yNode,
   BrowserCommand,
   BrowserOptions,
   CommandResponse,
   ConsoleMessage,
+  CookiesCommand,
+  DialogCommand,
+  DialogEntry,
   ElementInfo,
+  MetricsData,
   NetworkEntry,
+  PageError,
+  StorageCommand,
 } from './types.js';
 
 export class ClaudeBrowser {
@@ -17,6 +24,9 @@ export class ClaudeBrowser {
   private options: Required<BrowserOptions>;
   private consoleMessages: ConsoleMessage[] = [];
   private networkEntries: NetworkEntry[] = [];
+  private pageErrors: PageError[] = [];
+  private dialogHistory: DialogEntry[] = [];
+  private dialogConfig = { autoAccept: false, autoDismiss: false, promptText: '' };
   private interceptPatterns: Map<
     string,
     {
@@ -44,6 +54,43 @@ export class ClaudeBrowser {
     this.page = await this.context.newPage();
     this.setupConsoleListener(this.page);
     this.setupNetworkListener(this.page);
+    this.setupErrorListener(this.page);
+    this.setupDialogListener(this.page);
+  }
+
+  private setupErrorListener(page: Page): void {
+    page.on('pageerror', (error) => {
+      this.pageErrors.push({
+        message: error.message,
+        stack: error.stack,
+        timestamp: Date.now(),
+      });
+    });
+  }
+
+  private setupDialogListener(page: Page): void {
+    page.on('dialog', async (dialog) => {
+      const entry: DialogEntry = {
+        type: dialog.type() as DialogEntry['type'],
+        message: dialog.message(),
+        defaultValue: dialog.defaultValue() || undefined,
+        timestamp: Date.now(),
+      };
+
+      if (this.dialogConfig.autoAccept) {
+        await dialog.accept(this.dialogConfig.promptText || undefined);
+        entry.response = this.dialogConfig.promptText || true;
+      } else if (this.dialogConfig.autoDismiss) {
+        await dialog.dismiss();
+        entry.response = false;
+      } else {
+        // Default: accept to prevent blocking
+        await dialog.accept();
+        entry.response = true;
+      }
+
+      this.dialogHistory.push(entry);
+    });
   }
 
   private setupConsoleListener(page: Page): void {
@@ -219,6 +266,8 @@ export class ClaudeBrowser {
     this.page = await this.context.newPage();
     this.setupConsoleListener(this.page);
     this.setupNetworkListener(this.page);
+    this.setupErrorListener(this.page);
+    this.setupDialogListener(this.page);
   }
 
   async eval(script: string): Promise<unknown> {
@@ -258,6 +307,129 @@ export class ClaudeBrowser {
 
   clearNetwork(): void {
     this.networkEntries = [];
+  }
+
+  getErrors(clear = false): PageError[] {
+    const errors = this.pageErrors;
+    if (clear) {
+      this.pageErrors = [];
+    }
+    return errors;
+  }
+
+  clearErrors(): void {
+    this.pageErrors = [];
+  }
+
+  async getMetrics(includeResources = false): Promise<MetricsData> {
+    const page = this.ensurePage();
+
+    const metricsScript = `(() => {
+      const timing = performance.timing;
+      const navigationStart = timing.navigationStart;
+      const paintEntries = performance.getEntriesByType('paint');
+      const firstPaint = paintEntries.find(e => e.name === 'first-paint');
+      const fcp = paintEntries.find(e => e.name === 'first-contentful-paint');
+      return {
+        timing: {
+          domContentLoaded: timing.domContentLoadedEventEnd - navigationStart,
+          load: timing.loadEventEnd - navigationStart,
+          firstPaint: firstPaint ? firstPaint.startTime : undefined,
+          firstContentfulPaint: fcp ? fcp.startTime : undefined,
+        },
+        dom: {
+          nodes: document.getElementsByTagName('*').length,
+          scripts: document.getElementsByTagName('script').length,
+          stylesheets: document.getElementsByTagName('link').length,
+          images: document.getElementsByTagName('img').length,
+        },
+      };
+    })()`;
+
+    const metrics = (await page.evaluate(metricsScript)) as MetricsData;
+
+    if (includeResources) {
+      const resourcesScript = `(() => {
+        return performance.getEntriesByType('resource').map(entry => ({
+          name: entry.name,
+          type: entry.initiatorType,
+          duration: Math.round(entry.duration),
+          size: entry.transferSize || 0,
+        }));
+      })()`;
+      const resources = (await page.evaluate(resourcesScript)) as MetricsData['resources'];
+      return { ...metrics, resources };
+    }
+
+    return metrics;
+  }
+
+  async getA11y(selector?: string): Promise<A11yNode | null> {
+    const page = this.ensurePage();
+
+    // Build a11y tree using ARIA attributes and semantic roles
+    const selectorArg = selector ? JSON.stringify(selector) : 'null';
+    const script = `((selector) => {
+      function getA11yNode(el) {
+        const role = el.getAttribute('role') || getImplicitRole(el);
+        const name = getAccessibleName(el);
+        const node = { role, name: name || undefined };
+        const value = el.value || el.getAttribute('aria-valuenow');
+        if (value) node.value = String(value);
+        const desc = el.getAttribute('aria-describedby');
+        if (desc) {
+          const descEl = document.getElementById(desc);
+          if (descEl) node.description = descEl.textContent?.trim();
+        }
+        const children = [];
+        for (const child of el.children) {
+          if (isAccessible(child)) children.push(getA11yNode(child));
+        }
+        if (children.length) node.children = children;
+        return node;
+      }
+      function getImplicitRole(el) {
+        const tag = el.tagName.toLowerCase();
+        const roleMap = { button:'button', a:'link', input:'textbox', img:'img',
+          h1:'heading', h2:'heading', h3:'heading', h4:'heading', nav:'navigation',
+          main:'main', footer:'contentinfo', header:'banner', aside:'complementary',
+          form:'form', table:'table', ul:'list', ol:'list', li:'listitem' };
+        return roleMap[tag] || 'generic';
+      }
+      function getAccessibleName(el) {
+        return el.getAttribute('aria-label') || el.getAttribute('alt')
+          || el.getAttribute('title') || (el.tagName === 'INPUT' ? el.placeholder : null)
+          || el.textContent?.trim().slice(0, 100);
+      }
+      function isAccessible(el) {
+        if (el.nodeType !== 1) return false;
+        if (el.getAttribute('aria-hidden') === 'true') return false;
+        const style = getComputedStyle(el);
+        return style.display !== 'none' && style.visibility !== 'hidden';
+      }
+      const root = selector ? document.querySelector(selector) : document.body;
+      return root ? getA11yNode(root) : null;
+    })(${selectorArg})`;
+
+    return page.evaluate(script) as Promise<A11yNode | null>;
+  }
+
+  getDialogs(): DialogEntry[] {
+    return this.dialogHistory;
+  }
+
+  clearDialogs(): void {
+    this.dialogHistory = [];
+  }
+
+  setDialogConfig(config: { autoAccept?: boolean; autoDismiss?: boolean; text?: string }): void {
+    if (config.autoAccept !== undefined) this.dialogConfig.autoAccept = config.autoAccept;
+    if (config.autoDismiss !== undefined) this.dialogConfig.autoDismiss = config.autoDismiss;
+    if (config.text !== undefined) this.dialogConfig.promptText = config.text;
+  }
+
+  getDialogConfig(): { autoAccept: boolean; autoDismiss: boolean } {
+    return { autoAccept: this.dialogConfig.autoAccept, autoDismiss: this.dialogConfig.autoDismiss };
   }
 
   async addIntercept(
@@ -301,6 +473,188 @@ export class ClaudeBrowser {
 
   getInterceptPatterns(): string[] {
     return Array.from(this.interceptPatterns.keys());
+  }
+
+  // Phase 6: Cookies & Storage
+  async getCookies(
+    name?: string
+  ): Promise<Array<{ name: string; value: string; domain: string; path: string }>> {
+    const context = this.getContext();
+    if (!context) throw new Error('Browser not launched');
+    const cookies = await context.cookies();
+    const filtered = name ? cookies.filter((c) => c.name === name) : cookies;
+    return filtered.map((c) => ({ name: c.name, value: c.value, domain: c.domain, path: c.path }));
+  }
+
+  async setCookie(name: string, value: string, url?: string): Promise<void> {
+    const context = this.getContext();
+    if (!context) throw new Error('Browser not launched');
+    const page = this.ensurePage();
+    await context.addCookies([{ name, value, url: url || page.url() }]);
+  }
+
+  async deleteCookie(name: string): Promise<void> {
+    const context = this.getContext();
+    if (!context) throw new Error('Browser not launched');
+    const cookies = await context.cookies();
+    const toKeep = cookies.filter((c) => c.name !== name);
+    await context.clearCookies();
+    if (toKeep.length > 0) await context.addCookies(toKeep);
+  }
+
+  async clearCookies(): Promise<void> {
+    const context = this.getContext();
+    if (!context) throw new Error('Browser not launched');
+    await context.clearCookies();
+  }
+
+  async getStorage(type: 'local' | 'session', key?: string): Promise<Record<string, string>> {
+    const page = this.ensurePage();
+    const storage = type === 'local' ? 'localStorage' : 'sessionStorage';
+    const script = key
+      ? `({ [${JSON.stringify(key)}]: ${storage}.getItem(${JSON.stringify(key)}) || '' })`
+      : `Object.fromEntries(Array.from({ length: ${storage}.length }, (_, i) => {
+          const k = ${storage}.key(i); return [k, ${storage}.getItem(k)];
+        }))`;
+    return page.evaluate(script) as Promise<Record<string, string>>;
+  }
+
+  async setStorage(type: 'local' | 'session', key: string, value: string): Promise<void> {
+    const page = this.ensurePage();
+    const storage = type === 'local' ? 'localStorage' : 'sessionStorage';
+    await page.evaluate(`${storage}.setItem(${JSON.stringify(key)}, ${JSON.stringify(value)})`);
+  }
+
+  async deleteStorage(type: 'local' | 'session', key: string): Promise<void> {
+    const page = this.ensurePage();
+    const storage = type === 'local' ? 'localStorage' : 'sessionStorage';
+    await page.evaluate(`${storage}.removeItem(${JSON.stringify(key)})`);
+  }
+
+  async clearStorage(type: 'local' | 'session'): Promise<void> {
+    const page = this.ensurePage();
+    const storage = type === 'local' ? 'localStorage' : 'sessionStorage';
+    await page.evaluate(`${storage}.clear()`);
+  }
+
+  // Phase 7: Advanced Interactions
+  async hover(selector: string): Promise<void> {
+    const page = this.ensurePage();
+    await page.hover(selector);
+  }
+
+  async select(selector: string, value: string | string[]): Promise<string[]> {
+    const page = this.ensurePage();
+    return page.selectOption(selector, value);
+  }
+
+  async keys(keys: string): Promise<void> {
+    const page = this.ensurePage();
+    await page.keyboard.press(keys);
+  }
+
+  async upload(selector: string, files: string[]): Promise<void> {
+    const page = this.ensurePage();
+    await page.setInputFiles(selector, files);
+  }
+
+  async scroll(selector?: string, x?: number, y?: number): Promise<void> {
+    const page = this.ensurePage();
+    if (selector) {
+      await page.locator(selector).scrollIntoViewIfNeeded();
+    } else {
+      await page.evaluate(`window.scrollTo(${x || 0}, ${y || 0})`);
+    }
+  }
+
+  // Phase 8: Viewport & Emulation
+  async setViewport(width: number, height: number): Promise<{ width: number; height: number }> {
+    const page = this.ensurePage();
+    await page.setViewportSize({ width, height });
+    return { width, height };
+  }
+
+  async emulate(device: string): Promise<{ width: number; height: number }> {
+    const page = this.ensurePage();
+    const { devices } = await import('playwright');
+    const deviceConfig = devices[device];
+    if (!deviceConfig)
+      throw new Error(`Unknown device: ${device}. Try 'iPhone 13', 'Pixel 5', etc.`);
+    await page.setViewportSize(deviceConfig.viewport);
+    return deviceConfig.viewport;
+  }
+
+  private handleDialogCommand(cmd: DialogCommand): CommandResponse {
+    switch (cmd.action) {
+      case 'status':
+        return { ok: true, dialogs: this.getDialogs(), dialogConfig: this.getDialogConfig() };
+      case 'accept':
+        this.setDialogConfig({ autoAccept: true, autoDismiss: false, text: cmd.text });
+        return { ok: true, dialogConfig: this.getDialogConfig() };
+      case 'dismiss':
+        this.setDialogConfig({ autoAccept: false, autoDismiss: true });
+        return { ok: true, dialogConfig: this.getDialogConfig() };
+      case 'config':
+        this.setDialogConfig({
+          autoAccept: cmd.autoAccept,
+          autoDismiss: cmd.autoDismiss,
+          text: cmd.text,
+        });
+        return { ok: true, dialogConfig: this.getDialogConfig() };
+      default:
+        return { ok: false, error: 'Unknown dialog action' };
+    }
+  }
+
+  private async handleCookiesCommand(cmd: CookiesCommand): Promise<CommandResponse> {
+    switch (cmd.action) {
+      case 'get': {
+        const cookies = await this.getCookies(cmd.name);
+        return { ok: true, cookies, count: cookies.length };
+      }
+      case 'set': {
+        if (!cmd.name || !cmd.value) return { ok: false, error: 'Name and value required' };
+        await this.setCookie(cmd.name, cmd.value, cmd.url);
+        return { ok: true };
+      }
+      case 'delete': {
+        if (!cmd.name) return { ok: false, error: 'Name required' };
+        await this.deleteCookie(cmd.name);
+        return { ok: true };
+      }
+      case 'clear': {
+        await this.clearCookies();
+        return { ok: true };
+      }
+      default:
+        return { ok: false, error: 'Unknown cookies action' };
+    }
+  }
+
+  private async handleStorageCommand(cmd: StorageCommand): Promise<CommandResponse> {
+    switch (cmd.action) {
+      case 'get': {
+        const storage = await this.getStorage(cmd.type, cmd.key);
+        return { ok: true, storage, count: Object.keys(storage).length };
+      }
+      case 'set': {
+        if (!cmd.key || cmd.value === undefined)
+          return { ok: false, error: 'Key and value required' };
+        await this.setStorage(cmd.type, cmd.key, cmd.value);
+        return { ok: true };
+      }
+      case 'delete': {
+        if (!cmd.key) return { ok: false, error: 'Key required' };
+        await this.deleteStorage(cmd.type, cmd.key);
+        return { ok: true };
+      }
+      case 'clear': {
+        await this.clearStorage(cmd.type);
+        return { ok: true };
+      }
+      default:
+        return { ok: false, error: 'Unknown storage action' };
+    }
   }
 
   async executeCommand(cmd: BrowserCommand): Promise<CommandResponse> {
@@ -384,6 +738,52 @@ export class ClaudeBrowser {
           }
           await this.addIntercept(cmd.pattern, cmd.action, cmd.response);
           return { ok: true, patterns: this.getInterceptPatterns() };
+        }
+        case 'errors': {
+          const errors = this.getErrors(cmd.clear);
+          return { ok: true, count: errors.length, errors };
+        }
+        case 'metrics': {
+          const metrics = await this.getMetrics(cmd.resources);
+          return { ok: true, metrics };
+        }
+        case 'a11y': {
+          const a11y = await this.getA11y(cmd.selector);
+          return { ok: true, a11y: a11y || undefined };
+        }
+        case 'dialog':
+          return this.handleDialogCommand(cmd);
+        case 'cookies':
+          return this.handleCookiesCommand(cmd);
+        case 'storage':
+          return this.handleStorageCommand(cmd);
+        case 'hover': {
+          await this.hover(cmd.selector);
+          return { ok: true };
+        }
+        case 'select': {
+          const selected = await this.select(cmd.selector, cmd.value);
+          return { ok: true, selected };
+        }
+        case 'keys': {
+          await this.keys(cmd.keys);
+          return { ok: true };
+        }
+        case 'upload': {
+          await this.upload(cmd.selector, cmd.files);
+          return { ok: true };
+        }
+        case 'scroll': {
+          await this.scroll(cmd.selector, cmd.x, cmd.y);
+          return { ok: true };
+        }
+        case 'viewport': {
+          const viewport = await this.setViewport(cmd.width, cmd.height);
+          return { ok: true, viewport };
+        }
+        case 'emulate': {
+          const viewport = await this.emulate(cmd.device);
+          return { ok: true, viewport };
         }
         case 'favicon': {
           const result = await image.createFavicon(cmd.input, cmd.outputDir);
