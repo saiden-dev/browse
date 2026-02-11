@@ -42,11 +42,14 @@ browse -i --headed https://example.com
 Install as a Claude Code plugin for the best integration:
 
 ```bash
-# Install from GitHub
-claude plugin install github:saiden-dev/browse
+# Add the saiden marketplace (one-time)
+claude plugin marketplace add https://github.com/saiden-dev/claude-plugins
 
-# Or load locally for development
-claude --plugin-dir /path/to/claude-browse
+# Install the plugin
+claude plugin install browse@saiden
+
+# Update to latest version
+claude plugin marketplace update saiden && claude plugin update browse@saiden
 ```
 
 **Prerequisites:** Node.js 18+, Playwright WebKit (`npx playwright install webkit`)
