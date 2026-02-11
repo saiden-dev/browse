@@ -1,12 +1,14 @@
 import { type BrowserContext, type Page } from 'playwright';
-import type { BrowserCommand, BrowserOptions, CommandResponse, ElementInfo } from './types.js';
+import type { BrowserCommand, BrowserOptions, CommandResponse, ConsoleMessage, ElementInfo } from './types.js';
 export declare class ClaudeBrowser {
     private browser;
     private context;
     private page;
     private options;
+    private consoleMessages;
     constructor(options?: BrowserOptions);
     launch(): Promise<void>;
+    private setupConsoleListener;
     close(): Promise<void>;
     private ensurePage;
     /** Get the current page instance (for advanced usage) */
@@ -43,6 +45,8 @@ export declare class ClaudeBrowser {
     wait(ms?: number): Promise<void>;
     newPage(): Promise<void>;
     eval(script: string): Promise<unknown>;
+    getConsole(level?: string, clear?: boolean): ConsoleMessage[];
+    clearConsole(): void;
     executeCommand(cmd: BrowserCommand): Promise<CommandResponse>;
 }
 //# sourceMappingURL=browser.d.ts.map

@@ -100,7 +100,18 @@ export interface ThumbnailCommand {
     output: string;
     size?: 'small' | 'medium' | 'large';
 }
-export type BrowserCommand = GotoCommand | ClickCommand | TypeCommand | QueryCommand | ScreenshotCommand | UrlCommand | HtmlCommand | BackCommand | ForwardCommand | ReloadCommand | WaitCommand | NewPageCommand | CloseCommand | EvalCommand | FaviconCommand | ConvertCommand | ResizeCommand | CropCommand | CompressCommand | ThumbnailCommand;
+export interface ConsoleCommand {
+    cmd: 'console';
+    clear?: boolean;
+    level?: 'log' | 'info' | 'warn' | 'error' | 'debug' | 'all';
+}
+export interface ConsoleMessage {
+    level: string;
+    text: string;
+    timestamp: number;
+    location?: string;
+}
+export type BrowserCommand = GotoCommand | ClickCommand | TypeCommand | QueryCommand | ScreenshotCommand | UrlCommand | HtmlCommand | BackCommand | ForwardCommand | ReloadCommand | WaitCommand | NewPageCommand | CloseCommand | EvalCommand | FaviconCommand | ConvertCommand | ResizeCommand | CropCommand | CompressCommand | ThumbnailCommand | ConsoleCommand;
 export interface SuccessResponse {
     ok: true;
     url?: string;
@@ -116,6 +127,7 @@ export interface SuccessResponse {
     height?: number;
     format?: string;
     size?: number;
+    messages?: ConsoleMessage[];
 }
 export interface ErrorResponse {
     ok: false;

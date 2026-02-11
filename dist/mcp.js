@@ -106,6 +106,19 @@ server.tool('eval', 'Execute JavaScript in the browser context', { script: z.str
     const result = await browser.eval(script);
     return textResult(JSON.stringify({ ok: true, result }));
 }));
+// Console
+server.tool('console', 'Get captured console messages (log, warn, error, etc.) from the browser', {
+    level: z
+        .enum(['log', 'info', 'warn', 'error', 'debug', 'all'])
+        .optional()
+        .default('all')
+        .describe('Filter by log level'),
+    clear: z.boolean().optional().default(false).describe('Clear messages after retrieving'),
+}, withLogging('console', async ({ level, clear }) => {
+    await ensureLaunched();
+    const messages = browser.getConsole(level, clear);
+    return textResult(JSON.stringify({ ok: true, count: messages.length, messages }));
+}));
 // Utility
 server.tool('wait', 'Wait for a specified time in milliseconds', { ms: z.number().optional().default(1000) }, withLogging('wait', async ({ ms }) => {
     await ensureLaunched();
@@ -333,6 +346,30 @@ server.resource('Full Page HTML', 'browser://html/full', { description: 'Complet
                 uri: 'browser://html/full',
                 mimeType: 'text/html',
                 text: html,
+            },
+        ],
+    };
+});
+// Resource: browser://console - Captured console messages
+server.resource('Console Messages', 'browser://console', { description: 'Console messages captured from the browser', mimeType: 'application/json' }, async () => {
+    if (!launched) {
+        return {
+            contents: [
+                {
+                    uri: 'browser://console',
+                    mimeType: 'application/json',
+                    text: JSON.stringify({ launched: false, messages: [] }),
+                },
+            ],
+        };
+    }
+    const messages = browser.getConsole('all', false);
+    return {
+        contents: [
+            {
+                uri: 'browser://console',
+                mimeType: 'application/json',
+                text: JSON.stringify({ launched: true, count: messages.length, messages }),
             },
         ],
     };

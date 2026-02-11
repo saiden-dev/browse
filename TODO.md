@@ -1,36 +1,39 @@
-# TODO: Web Debugging Commands
+# TODO: Playwright Debugging Features
 
-## Phase 1: Storage & Session Commands
-- [ ] Step 1.1: Add Cookies Command
-- [ ] Step 1.2: Add Storage Command
+## Phase 1: Core Debugging (Console & Errors)
+- [x] Step 1.1: Add Console Command
+- [ ] Step 1.2: Add Page Errors Command
 
-## Phase 2: Console & Debugging Commands
-- [ ] Step 2.1: Add Console Command
-- [ ] Step 2.2: Add Metrics Command
+## Phase 2: Network Monitoring
+- [ ] Step 2.1: Add Network Logging
+- [ ] Step 2.2: Add Failed Requests Filter
+- [ ] Step 2.3: Add Request Interception
 
-## Phase 3: Interaction Commands
-- [ ] Step 3.1: Add Scroll Command
-- [ ] Step 3.2: Add Hover Command
-- [ ] Step 3.3: Add Select Command
-- [ ] Step 3.4: Add Keys Command
+## Phase 3: Performance & Metrics
+- [ ] Step 3.1: Add Performance Metrics
+- [ ] Step 3.2: Add Resource Timing
 
-## Phase 4: Network Commands
-- [ ] Step 4.1: Add Network Logging
-- [ ] Step 4.2: Add Block Command
-- [ ] Step 4.3: Add Throttle Command
+## Phase 4: Accessibility
+- [ ] Step 4.1: Add Accessibility Snapshot
 
-## Phase 5: Output Commands
-- [ ] Step 5.1: Add PDF Command
-- [ ] Step 5.2: Add Accessibility Command
+## Phase 5: Dialog Handling
+- [ ] Step 5.1: Add Dialog Command
 
-## Phase 6: Advanced Commands
-- [ ] Step 6.1: Add Viewport Command
-- [ ] Step 6.2: Add Emulate Command
-- [ ] Step 6.3: Add Frames Command
-- [ ] Step 6.4: Add Dialog Command
-- [ ] Step 6.5: Add Upload Command
+## Phase 6: Storage & Cookies
+- [ ] Step 6.1: Add Cookies Command
+- [ ] Step 6.2: Add Storage Command
 
-## Phase 7: Documentation & Polish
-- [ ] Step 7.1: Update README
-- [ ] Step 7.2: Update CLAUDE.md
-- [ ] Step 7.3: Update CLI Help
+## Phase 7: Advanced Interactions
+- [ ] Step 7.1: Add Hover Command
+- [ ] Step 7.2: Add Select Command
+- [ ] Step 7.3: Add Keys Command
+- [ ] Step 7.4: Add Upload Command
+- [ ] Step 7.5: Add Scroll Command
+
+## Phase 8: Viewport & Emulation
+- [ ] Step 8.1: Add Viewport Command
+- [ ] Step 8.2: Add Emulate Command
+
+## Phase 9: Documentation
+- [ ] Step 9.1: Update README
+- [ ] Step 9.2: Update CLAUDE.md

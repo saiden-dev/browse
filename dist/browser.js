@@ -6,6 +6,7 @@ export class ClaudeBrowser {
     context = null;
     page = null;
     options;
+    consoleMessages = [];
     constructor(options = {}) {
         this.options = {
             headless: options.headless ?? true,
@@ -22,6 +23,18 @@ export class ClaudeBrowser {
             },
         });
         this.page = await this.context.newPage();
+        this.setupConsoleListener(this.page);
+    }
+    setupConsoleListener(page) {
+        page.on('console', (msg) => {
+            const location = msg.location();
+            this.consoleMessages.push({
+                level: msg.type(),
+                text: msg.text(),
+                timestamp: Date.now(),
+                location: location.url ? `${location.url}:${location.lineNumber}` : undefined,
+            });
+        });
     }
     async close() {
         if (this.browser) {
@@ -113,10 +126,24 @@ export class ClaudeBrowser {
             throw new Error('Browser not launched. Call launch() first.');
         }
         this.page = await this.context.newPage();
+        this.setupConsoleListener(this.page);
     }
     async eval(script) {
         const page = this.ensurePage();
         return page.evaluate(script);
+    }
+    getConsole(level, clear = false) {
+        let messages = this.consoleMessages;
+        if (level && level !== 'all') {
+            messages = messages.filter((m) => m.level === level);
+        }
+        if (clear) {
+            this.consoleMessages = [];
+        }
+        return messages;
+    }
+    clearConsole() {
+        this.consoleMessages = [];
     }
     async executeCommand(cmd) {
         try {
@@ -176,6 +203,10 @@ export class ClaudeBrowser {
                 case 'eval': {
                     const result = await this.eval(cmd.script);
                     return { ok: true, result };
+                }
+                case 'console': {
+                    const messages = this.getConsole(cmd.level, cmd.clear);
+                    return { ok: true, count: messages.length, messages };
                 }
                 case 'favicon': {
                     const result = await image.createFavicon(cmd.input, cmd.outputDir);

@@ -1,13 +1,20 @@
 import { resolve } from 'node:path';
 import { type Browser, type BrowserContext, type Page, webkit } from 'playwright';
 import * as image from './image.js';
-import type { BrowserCommand, BrowserOptions, CommandResponse, ElementInfo } from './types.js';
+import type {
+  BrowserCommand,
+  BrowserOptions,
+  CommandResponse,
+  ConsoleMessage,
+  ElementInfo,
+} from './types.js';
 
 export class ClaudeBrowser {
   private browser: Browser | null = null;
   private context: BrowserContext | null = null;
   private page: Page | null = null;
   private options: Required<BrowserOptions>;
+  private consoleMessages: ConsoleMessage[] = [];
 
   constructor(options: BrowserOptions = {}) {
     this.options = {
@@ -26,6 +33,19 @@ export class ClaudeBrowser {
       },
     });
     this.page = await this.context.newPage();
+    this.setupConsoleListener(this.page);
+  }
+
+  private setupConsoleListener(page: Page): void {
+    page.on('console', (msg) => {
+      const location = msg.location();
+      this.consoleMessages.push({
+        level: msg.type(),
+        text: msg.text(),
+        timestamp: Date.now(),
+        location: location.url ? `${location.url}:${location.lineNumber}` : undefined,
+      });
+    });
   }
 
   async close(): Promise<void> {
@@ -135,11 +155,27 @@ export class ClaudeBrowser {
       throw new Error('Browser not launched. Call launch() first.');
     }
     this.page = await this.context.newPage();
+    this.setupConsoleListener(this.page);
   }
 
   async eval(script: string): Promise<unknown> {
     const page = this.ensurePage();
     return page.evaluate(script);
+  }
+
+  getConsole(level?: string, clear = false): ConsoleMessage[] {
+    let messages = this.consoleMessages;
+    if (level && level !== 'all') {
+      messages = messages.filter((m) => m.level === level);
+    }
+    if (clear) {
+      this.consoleMessages = [];
+    }
+    return messages;
+  }
+
+  clearConsole(): void {
+    this.consoleMessages = [];
   }
 
   async executeCommand(cmd: BrowserCommand): Promise<CommandResponse> {
@@ -200,6 +236,10 @@ export class ClaudeBrowser {
         case 'eval': {
           const result = await this.eval(cmd.script);
           return { ok: true, result };
+        }
+        case 'console': {
+          const messages = this.getConsole(cmd.level, cmd.clear);
+          return { ok: true, count: messages.length, messages };
         }
         case 'favicon': {
           const result = await image.createFavicon(cmd.input, cmd.outputDir);

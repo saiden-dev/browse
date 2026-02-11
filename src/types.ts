@@ -124,6 +124,19 @@ export interface ThumbnailCommand {
   size?: 'small' | 'medium' | 'large';
 }
 
+export interface ConsoleCommand {
+  cmd: 'console';
+  clear?: boolean;
+  level?: 'log' | 'info' | 'warn' | 'error' | 'debug' | 'all';
+}
+
+export interface ConsoleMessage {
+  level: string;
+  text: string;
+  timestamp: number;
+  location?: string;
+}
+
 export type BrowserCommand =
   | GotoCommand
   | ClickCommand
@@ -144,7 +157,8 @@ export type BrowserCommand =
   | ResizeCommand
   | CropCommand
   | CompressCommand
-  | ThumbnailCommand;
+  | ThumbnailCommand
+  | ConsoleCommand;
 
 // Response types
 export interface SuccessResponse {
@@ -163,6 +177,8 @@ export interface SuccessResponse {
   height?: number;
   format?: string;
   size?: number;
+  // Console fields
+  messages?: ConsoleMessage[];
 }
 
 export interface ErrorResponse {
