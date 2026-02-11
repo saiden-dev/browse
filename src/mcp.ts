@@ -83,11 +83,7 @@ server.tool(
       .optional()
       .default(false)
       .describe('Highlight elements before actions with visual overlay'),
-    previewDelay: z
-      .number()
-      .optional()
-      .default(2000)
-      .describe('Preview highlight duration in ms'),
+    previewDelay: z.number().optional().default(2000).describe('Preview highlight duration in ms'),
     width: z.number().optional().default(1280).describe('Viewport width'),
     height: z.number().optional().default(800).describe('Viewport height'),
   },
