@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { ClaudeBrowser } from './browser.js';
 import * as image from './image.js';
-import { startServer } from './server.js';
 import type { ElementInfo } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -75,25 +74,8 @@ Image processing examples:
   browse https://example.com --resize 800x600
   browse https://example.com --compress 60
 
-Server mode (default):
-  browse                            # Start server on port 13373
-  browse --headed                   # Start with visible browser
-
-  # Send commands via curl:
-  curl -X POST http://localhost:13373 -d '{"cmd":"goto","url":"https://example.com"}'
-  curl -X POST http://localhost:13373 -d '{"cmd":"click","selector":"button"}'
-  curl -X POST http://localhost:13373 -d '{"cmd":"type","selector":"input","text":"hello"}'
-  curl -X POST http://localhost:13373 -d '{"cmd":"query","selector":"a[href]"}'
-  curl -X POST http://localhost:13373 -d '{"cmd":"screenshot","path":"shot.png"}'
-  curl -X POST http://localhost:13373 -d '{"cmd":"url"}'
-  curl -X POST http://localhost:13373 -d '{"cmd":"html"}'
-  curl -X POST http://localhost:13373 -d '{"cmd":"close"}'
-
-  # Image processing via server:
-  curl localhost:13373 -d '{"cmd":"favicon","input":"screenshot.png","outputDir":"./favicons"}'
-  curl localhost:13373 -d '{"cmd":"convert","input":"img.png","output":"img.webp","format":"webp"}'
-  curl localhost:13373 -d '{"cmd":"resize","input":"img.png","output":"small.png","width":400}'
-  curl localhost:13373 -d '{"cmd":"compress","input":"img.png","output":"compressed.png","quality":60}'
+MCP Server (for Claude Code integration):
+  browse-mcp                        # Run as MCP server (stdio transport)
 `;
 
 function getViewportConfig() {
@@ -102,19 +84,6 @@ function getViewportConfig() {
     width: Number.parseInt(values.width as string),
     height: Number.parseInt(values.height as string),
   };
-}
-
-async function runServerMode(): Promise<void> {
-  const port = 13373;
-  const server = await startServer({ port, ...getViewportConfig() });
-
-  process.on('SIGINT', async () => {
-    console.log('\nShutting down...');
-    await server.stop();
-    process.exit(0);
-  });
-
-  await new Promise(() => {});
 }
 
 async function processTypeActions(browser: ClaudeBrowser): Promise<void> {
@@ -265,8 +234,8 @@ async function main(): Promise<void> {
   }
 
   if (positionals.length === 0) {
-    await runServerMode();
-    return;
+    console.log(HELP);
+    process.exit(0);
   }
 
   await runBrowserMode();

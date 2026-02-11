@@ -1,5 +1,4 @@
 export { ClaudeBrowser } from './browser.js';
-export { BrowserServer, startServer } from './server.js';
 export {
   createFavicon,
   convert,
@@ -41,4 +40,3 @@ export type {
   CompressCommand,
   ThumbnailCommand,
 } from './types.js';
-export type { ServerOptions } from './server.js';
