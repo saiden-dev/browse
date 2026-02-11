@@ -13,7 +13,8 @@
       "WebFetch(domain:blog.rust-lang.org)",
       "WebFetch(domain:rubyreferences.github.io)",
       "WebFetch(domain:releases.rs)",
-      "WebFetch(domain:asdf-vm.com)"
+      "WebFetch(domain:asdf-vm.com)",
+      "mcp__personality__speak"
     ]
   }
 }
