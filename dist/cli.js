@@ -16,6 +16,9 @@ const { values, positionals } = parseArgs({
         fullpage: { type: 'boolean', short: 'f', default: false },
         wait: { type: 'string', default: '2000' },
         headed: { type: 'boolean', default: false },
+        fullscreen: { type: 'boolean', default: false },
+        preview: { type: 'boolean', short: 'p', default: false },
+        'preview-delay': { type: 'string', default: '2000' },
         interactive: { type: 'boolean', short: 'i', default: false },
         query: { type: 'string', short: 'q' },
         json: { type: 'boolean', short: 'j', default: false },
@@ -40,6 +43,9 @@ Options:
   -f, --fullpage          Capture full page scroll
   --wait <ms>             Wait time after load (default: 2000)
   --headed                Show browser window
+  --fullscreen            Launch in native fullscreen mode (macOS only, implies --headed)
+  -p, --preview           Highlight elements before actions (click, type, etc.)
+  --preview-delay <ms>    Preview highlight duration (default: 2000)
   -i, --interactive       Keep browser open for manual interaction
   -q, --query <selector>  Query elements by CSS selector and show attributes
   -j, --json              Output query results as JSON
@@ -58,11 +64,13 @@ Examples:
   browse https://example.com
   browse -o page.png -w 1920 -h 1080 https://example.com
   browse -i --headed https://example.com
+  browse -i --fullscreen https://example.com
   browse -q "a[href]" https://example.com
   browse -q "img" -j https://example.com
   browse -c "button.submit" https://example.com
   browse -t "input[name=q]=hello" -c "button[type=submit]" https://google.com
   browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
+  browse -p -c "button.submit" https://example.com
 
 Image processing examples:
   browse https://example.com --favicon ./favicons/
@@ -74,10 +82,15 @@ MCP Server (for Claude Code integration):
   browse-mcp                        # Run as MCP server (stdio transport)
 `;
 function getViewportConfig() {
+    const fullscreen = values.fullscreen;
+    const preview = values.preview;
     return {
-        headless: !values.headed,
+        headless: fullscreen || preview ? false : !values.headed,
         width: Number.parseInt(values.width),
         height: Number.parseInt(values.height),
+        fullscreen,
+        preview,
+        previewDelay: Number.parseInt(values['preview-delay']),
     };
 }
 async function processTypeActions(browser) {

@@ -2,6 +2,9 @@ export interface BrowserOptions {
     headless?: boolean;
     width?: number;
     height?: number;
+    fullscreen?: boolean;
+    preview?: boolean;
+    previewDelay?: number;
 }
 export interface ElementInfo {
     tag: string;

@@ -1,6 +1,6 @@
 {
   "name": "@saiden/browse",
-  "version": "0.2.13-pre.0",
+  "version": "0.2.13",
   "description": "Headless browser automation for Claude Code using Playwright WebKit",
   "type": "module",
   "main": "dist/index.js",

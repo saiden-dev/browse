@@ -81,6 +81,13 @@ browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
 
 # Interactive mode (visible browser)
 browse -i --headed https://example.com
+
+# Fullscreen mode (macOS native fullscreen)
+browse --fullscreen -i https://example.com
+
+# Preview mode (highlights elements before actions)
+browse -p -c "button.submit" https://example.com
+browse -p --preview-delay 3000 -c ".nav-link" https://example.com
 ```
 
 ## MCP Server (Standalone)
@@ -185,9 +192,12 @@ Add to Claude Code's MCP config (`~/.claude/settings.json`):
 import { ClaudeBrowser } from '@saiden/browse';
 
 const browser = new ClaudeBrowser({
-  headless: true,
+  headless: true,      // Set false to show browser window
   width: 1280,
   height: 800,
+  fullscreen: false,   // macOS native fullscreen (implies headless: false)
+  preview: false,      // Highlight elements before actions
+  previewDelay: 2000,  // Preview highlight duration in ms
 });
 
 await browser.launch();

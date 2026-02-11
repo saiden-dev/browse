@@ -1,5 +1,9 @@
+import { exec } from 'node:child_process';
 import { resolve } from 'node:path';
+import { promisify } from 'node:util';
 import { type Browser, type BrowserContext, type Page, type Route, webkit } from 'playwright';
+
+const execAsync = promisify(exec);
 import * as image from './image.js';
 import type {
   A11yNode,
@@ -40,6 +44,9 @@ export class ClaudeBrowser {
       headless: options.headless ?? true,
       width: options.width ?? 1280,
       height: options.height ?? 800,
+      fullscreen: options.fullscreen ?? false,
+      preview: options.preview ?? false,
+      previewDelay: options.previewDelay ?? 2000,
     };
   }
 
@@ -56,6 +63,98 @@ export class ClaudeBrowser {
     this.setupNetworkListener(this.page);
     this.setupErrorListener(this.page);
     this.setupDialogListener(this.page);
+
+    if (this.options.fullscreen && !this.options.headless) {
+      await this.enterFullscreen();
+    }
+  }
+
+  private async enterFullscreen(): Promise<void> {
+    if (process.platform !== 'darwin') {
+      console.warn('Native fullscreen only supported on macOS');
+      return;
+    }
+
+    // AppleScript to fullscreen the Playwright window by process name
+    const script = `
+      tell application "System Events"
+        tell process "Playwright"
+          set value of attribute "AXFullScreen" of window 1 to true
+        end tell
+      end tell
+    `;
+
+    // Retry logic: wait for window to appear, then fullscreen
+    const maxAttempts = 5;
+    const delayMs = 500;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        await execAsync(`osascript -e '${script}'`);
+        return; // Success
+      } catch (err) {
+        if (attempt === maxAttempts) {
+          console.warn('Failed to enter fullscreen:', (err as Error).message);
+        }
+        // Window may not be ready yet, retry
+      }
+    }
+  }
+
+  private async previewAction(selector: string, action: string): Promise<void> {
+    if (!this.options.preview) return;
+
+    const page = this.ensurePage();
+    const escapedSelector = JSON.stringify(selector);
+    const escapedAction = JSON.stringify(action);
+
+    // Highlight the element with a pulsing red border
+    const highlightScript = `
+      (() => {
+        const selector = ${escapedSelector};
+        const action = ${escapedAction};
+        const el = document.querySelector(selector);
+        if (!el) return;
+
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        const overlay = document.createElement('div');
+        overlay.id = '__claude_preview_overlay__';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.3);z-index:999998;pointer-events:none';
+
+        const label = document.createElement('div');
+        label.id = '__claude_preview_label__';
+        label.textContent = action + ': ' + selector;
+        label.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#e11d48;color:white;padding:12px 24px;border-radius:8px;font-family:system-ui,sans-serif;font-size:16px;font-weight:600;z-index:1000001;box-shadow:0 4px 12px rgba(0,0,0,0.3)';
+
+        const rect = el.getBoundingClientRect();
+        const highlight = document.createElement('div');
+        highlight.id = '__claude_preview_highlight__';
+        highlight.style.cssText = 'position:fixed;top:' + (rect.top - 4) + 'px;left:' + (rect.left - 4) + 'px;width:' + (rect.width + 8) + 'px;height:' + (rect.height + 8) + 'px;border:3px solid #e11d48;border-radius:4px;z-index:1000000;pointer-events:none;box-shadow:0 0 0 4px rgba(225,29,72,0.3);animation:__claude_pulse__ 1s ease-in-out infinite';
+
+        const style = document.createElement('style');
+        style.id = '__claude_preview_style__';
+        style.textContent = '@keyframes __claude_pulse__{0%,100%{box-shadow:0 0 0 4px rgba(225,29,72,0.3)}50%{box-shadow:0 0 0 8px rgba(225,29,72,0.5)}}';
+
+        document.head.appendChild(style);
+        document.body.appendChild(overlay);
+        document.body.appendChild(highlight);
+        document.body.appendChild(label);
+      })()
+    `;
+
+    await page.evaluate(highlightScript);
+    await page.waitForTimeout(this.options.previewDelay);
+
+    // Clean up highlight
+    const cleanupScript = `
+      (() => {
+        ['__claude_preview_overlay__', '__claude_preview_highlight__', '__claude_preview_label__', '__claude_preview_style__']
+          .forEach(id => document.getElementById(id)?.remove());
+      })()
+    `;
+    await page.evaluate(cleanupScript);
   }
 
   private setupErrorListener(page: Page): void {
@@ -191,6 +290,7 @@ export class ClaudeBrowser {
 
   async click(selector: string): Promise<{ url: string }> {
     const page = this.ensurePage();
+    await this.previewAction(selector, 'CLICK');
     await page.click(selector);
     await page.waitForLoadState('networkidle').catch(() => {});
     return { url: page.url() };
@@ -198,6 +298,7 @@ export class ClaudeBrowser {
 
   async type(selector: string, text: string): Promise<void> {
     const page = this.ensurePage();
+    await this.previewAction(selector, `TYPE "${text}"`);
     await page.fill(selector, text);
   }
 
@@ -540,11 +641,14 @@ export class ClaudeBrowser {
   // Phase 7: Advanced Interactions
   async hover(selector: string): Promise<void> {
     const page = this.ensurePage();
+    await this.previewAction(selector, 'HOVER');
     await page.hover(selector);
   }
 
   async select(selector: string, value: string | string[]): Promise<string[]> {
     const page = this.ensurePage();
+    const valueStr = Array.isArray(value) ? value.join(', ') : value;
+    await this.previewAction(selector, `SELECT "${valueStr}"`);
     return page.selectOption(selector, value);
   }
 

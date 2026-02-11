@@ -13,6 +13,8 @@ export declare class ClaudeBrowser {
     private interceptPatterns;
     constructor(options?: BrowserOptions);
     launch(): Promise<void>;
+    private enterFullscreen;
+    private previewAction;
     private setupErrorListener;
     private setupDialogListener;
     private setupConsoleListener;
