@@ -5,9 +5,9 @@
 - [ ] Step 1.2: Add Page Errors Command
 
 ## Phase 2: Network Monitoring
-- [ ] Step 2.1: Add Network Logging
-- [ ] Step 2.2: Add Failed Requests Filter
-- [ ] Step 2.3: Add Request Interception
+- [x] Step 2.1: Add Network Logging
+- [x] Step 2.2: Add Failed Requests Filter
+- [x] Step 2.3: Add Request Interception
 
 ## Phase 3: Performance & Metrics
 - [ ] Step 3.1: Add Performance Metrics

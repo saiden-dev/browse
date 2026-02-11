@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { type Browser, type BrowserContext, type Page, webkit } from 'playwright';
+import { type Browser, type BrowserContext, type Page, type Route, webkit } from 'playwright';
 import * as image from './image.js';
 import type {
   BrowserCommand,
@@ -7,6 +7,7 @@ import type {
   CommandResponse,
   ConsoleMessage,
   ElementInfo,
+  NetworkEntry,
 } from './types.js';
 
 export class ClaudeBrowser {
@@ -15,6 +16,14 @@ export class ClaudeBrowser {
   private page: Page | null = null;
   private options: Required<BrowserOptions>;
   private consoleMessages: ConsoleMessage[] = [];
+  private networkEntries: NetworkEntry[] = [];
+  private interceptPatterns: Map<
+    string,
+    {
+      action: 'block' | 'mock';
+      response?: { status?: number; body?: string; contentType?: string };
+    }
+  > = new Map();
 
   constructor(options: BrowserOptions = {}) {
     this.options = {
@@ -34,6 +43,7 @@ export class ClaudeBrowser {
     });
     this.page = await this.context.newPage();
     this.setupConsoleListener(this.page);
+    this.setupNetworkListener(this.page);
   }
 
   private setupConsoleListener(page: Page): void {
@@ -45,6 +55,58 @@ export class ClaudeBrowser {
         timestamp: Date.now(),
         location: location.url ? `${location.url}:${location.lineNumber}` : undefined,
       });
+    });
+  }
+
+  private setupNetworkListener(page: Page): void {
+    const pendingRequests = new Map<string, NetworkEntry>();
+
+    page.on('request', (request) => {
+      const entry: NetworkEntry = {
+        url: request.url(),
+        method: request.method(),
+        resourceType: request.resourceType(),
+        requestHeaders: request.headers(),
+        timing: { startTime: Date.now() },
+      };
+      pendingRequests.set(request.url() + request.method(), entry);
+    });
+
+    page.on('response', async (response) => {
+      const request = response.request();
+      const key = request.url() + request.method();
+      const entry = pendingRequests.get(key);
+      if (entry) {
+        entry.status = response.status();
+        entry.statusText = response.statusText();
+        entry.responseHeaders = response.headers();
+        if (entry.timing) {
+          entry.timing.endTime = Date.now();
+          entry.timing.duration = entry.timing.endTime - entry.timing.startTime;
+        }
+        try {
+          const body = await response.body();
+          entry.size = body.length;
+        } catch {
+          // Body may not be available for some responses
+        }
+        this.networkEntries.push(entry);
+        pendingRequests.delete(key);
+      }
+    });
+
+    page.on('requestfailed', (request) => {
+      const key = request.url() + request.method();
+      const entry = pendingRequests.get(key);
+      if (entry) {
+        entry.error = request.failure()?.errorText || 'Request failed';
+        if (entry.timing) {
+          entry.timing.endTime = Date.now();
+          entry.timing.duration = entry.timing.endTime - entry.timing.startTime;
+        }
+        this.networkEntries.push(entry);
+        pendingRequests.delete(key);
+      }
     });
   }
 
@@ -156,6 +218,7 @@ export class ClaudeBrowser {
     }
     this.page = await this.context.newPage();
     this.setupConsoleListener(this.page);
+    this.setupNetworkListener(this.page);
   }
 
   async eval(script: string): Promise<unknown> {
@@ -176,6 +239,68 @@ export class ClaudeBrowser {
 
   clearConsole(): void {
     this.consoleMessages = [];
+  }
+
+  getNetwork(filter?: string, clear = false): NetworkEntry[] {
+    let entries = this.networkEntries;
+    if (filter && filter !== 'all') {
+      if (filter === 'failed') {
+        entries = entries.filter((e) => e.error || (e.status && e.status >= 400));
+      } else {
+        entries = entries.filter((e) => e.resourceType === filter);
+      }
+    }
+    if (clear) {
+      this.networkEntries = [];
+    }
+    return entries;
+  }
+
+  clearNetwork(): void {
+    this.networkEntries = [];
+  }
+
+  async addIntercept(
+    pattern: string,
+    action: 'block' | 'mock',
+    response?: { status?: number; body?: string; contentType?: string }
+  ): Promise<void> {
+    const page = this.ensurePage();
+    this.interceptPatterns.set(pattern, { action, response });
+    await page.route(pattern, (route) => this.handleIntercept(pattern, route));
+  }
+
+  private async handleIntercept(pattern: string, route: Route): Promise<void> {
+    const config = this.interceptPatterns.get(pattern);
+    if (!config) {
+      await route.continue();
+      return;
+    }
+    if (config.action === 'block') {
+      await route.abort();
+      return;
+    }
+    if (config.action === 'mock' && config.response) {
+      await route.fulfill({
+        status: config.response.status || 200,
+        contentType: config.response.contentType || 'application/json',
+        body: config.response.body || '',
+      });
+      return;
+    }
+    await route.continue();
+  }
+
+  async clearIntercepts(): Promise<void> {
+    const page = this.ensurePage();
+    for (const pattern of this.interceptPatterns.keys()) {
+      await page.unroute(pattern);
+    }
+    this.interceptPatterns.clear();
+  }
+
+  getInterceptPatterns(): string[] {
+    return Array.from(this.interceptPatterns.keys());
   }
 
   async executeCommand(cmd: BrowserCommand): Promise<CommandResponse> {
@@ -240,6 +365,25 @@ export class ClaudeBrowser {
         case 'console': {
           const messages = this.getConsole(cmd.level, cmd.clear);
           return { ok: true, count: messages.length, messages };
+        }
+        case 'network': {
+          const requests = this.getNetwork(cmd.filter, cmd.clear);
+          return { ok: true, count: requests.length, requests };
+        }
+        case 'intercept': {
+          if (cmd.action === 'list') {
+            const patterns = this.getInterceptPatterns();
+            return { ok: true, count: patterns.length, patterns };
+          }
+          if (cmd.action === 'clear') {
+            await this.clearIntercepts();
+            return { ok: true };
+          }
+          if (!cmd.pattern) {
+            return { ok: false, error: 'Pattern required for block/mock actions' };
+          }
+          await this.addIntercept(cmd.pattern, cmd.action, cmd.response);
+          return { ok: true, patterns: this.getInterceptPatterns() };
         }
         case 'favicon': {
           const result = await image.createFavicon(cmd.input, cmd.outputDir);

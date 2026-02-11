@@ -7,6 +7,8 @@ export class ClaudeBrowser {
     page = null;
     options;
     consoleMessages = [];
+    networkEntries = [];
+    interceptPatterns = new Map();
     constructor(options = {}) {
         this.options = {
             headless: options.headless ?? true,
@@ -24,6 +26,7 @@ export class ClaudeBrowser {
         });
         this.page = await this.context.newPage();
         this.setupConsoleListener(this.page);
+        this.setupNetworkListener(this.page);
     }
     setupConsoleListener(page) {
         page.on('console', (msg) => {
@@ -34,6 +37,55 @@ export class ClaudeBrowser {
                 timestamp: Date.now(),
                 location: location.url ? `${location.url}:${location.lineNumber}` : undefined,
             });
+        });
+    }
+    setupNetworkListener(page) {
+        const pendingRequests = new Map();
+        page.on('request', (request) => {
+            const entry = {
+                url: request.url(),
+                method: request.method(),
+                resourceType: request.resourceType(),
+                requestHeaders: request.headers(),
+                timing: { startTime: Date.now() },
+            };
+            pendingRequests.set(request.url() + request.method(), entry);
+        });
+        page.on('response', async (response) => {
+            const request = response.request();
+            const key = request.url() + request.method();
+            const entry = pendingRequests.get(key);
+            if (entry) {
+                entry.status = response.status();
+                entry.statusText = response.statusText();
+                entry.responseHeaders = response.headers();
+                if (entry.timing) {
+                    entry.timing.endTime = Date.now();
+                    entry.timing.duration = entry.timing.endTime - entry.timing.startTime;
+                }
+                try {
+                    const body = await response.body();
+                    entry.size = body.length;
+                }
+                catch {
+                    // Body may not be available for some responses
+                }
+                this.networkEntries.push(entry);
+                pendingRequests.delete(key);
+            }
+        });
+        page.on('requestfailed', (request) => {
+            const key = request.url() + request.method();
+            const entry = pendingRequests.get(key);
+            if (entry) {
+                entry.error = request.failure()?.errorText || 'Request failed';
+                if (entry.timing) {
+                    entry.timing.endTime = Date.now();
+                    entry.timing.duration = entry.timing.endTime - entry.timing.startTime;
+                }
+                this.networkEntries.push(entry);
+                pendingRequests.delete(key);
+            }
         });
     }
     async close() {
@@ -127,6 +179,7 @@ export class ClaudeBrowser {
         }
         this.page = await this.context.newPage();
         this.setupConsoleListener(this.page);
+        this.setupNetworkListener(this.page);
     }
     async eval(script) {
         const page = this.ensurePage();
@@ -144,6 +197,58 @@ export class ClaudeBrowser {
     }
     clearConsole() {
         this.consoleMessages = [];
+    }
+    getNetwork(filter, clear = false) {
+        let entries = this.networkEntries;
+        if (filter && filter !== 'all') {
+            if (filter === 'failed') {
+                entries = entries.filter((e) => e.error || (e.status && e.status >= 400));
+            }
+            else {
+                entries = entries.filter((e) => e.resourceType === filter);
+            }
+        }
+        if (clear) {
+            this.networkEntries = [];
+        }
+        return entries;
+    }
+    clearNetwork() {
+        this.networkEntries = [];
+    }
+    async addIntercept(pattern, action, response) {
+        const page = this.ensurePage();
+        this.interceptPatterns.set(pattern, { action, response });
+        await page.route(pattern, async (route) => {
+            const config = this.interceptPatterns.get(pattern);
+            if (!config) {
+                await route.continue();
+                return;
+            }
+            if (config.action === 'block') {
+                await route.abort();
+            }
+            else if (config.action === 'mock' && config.response) {
+                await route.fulfill({
+                    status: config.response.status || 200,
+                    contentType: config.response.contentType || 'application/json',
+                    body: config.response.body || '',
+                });
+            }
+            else {
+                await route.continue();
+            }
+        });
+    }
+    async clearIntercepts() {
+        const page = this.ensurePage();
+        for (const pattern of this.interceptPatterns.keys()) {
+            await page.unroute(pattern);
+        }
+        this.interceptPatterns.clear();
+    }
+    getInterceptPatterns() {
+        return Array.from(this.interceptPatterns.keys());
     }
     async executeCommand(cmd) {
         try {
@@ -207,6 +312,25 @@ export class ClaudeBrowser {
                 case 'console': {
                     const messages = this.getConsole(cmd.level, cmd.clear);
                     return { ok: true, count: messages.length, messages };
+                }
+                case 'network': {
+                    const requests = this.getNetwork(cmd.filter, cmd.clear);
+                    return { ok: true, count: requests.length, requests };
+                }
+                case 'intercept': {
+                    if (cmd.action === 'list') {
+                        const patterns = this.getInterceptPatterns();
+                        return { ok: true, count: patterns.length, patterns };
+                    }
+                    if (cmd.action === 'clear') {
+                        await this.clearIntercepts();
+                        return { ok: true };
+                    }
+                    if (!cmd.pattern) {
+                        return { ok: false, error: 'Pattern required for block/mock actions' };
+                    }
+                    await this.addIntercept(cmd.pattern, cmd.action, cmd.response);
+                    return { ok: true, patterns: this.getInterceptPatterns() };
                 }
                 case 'favicon': {
                     const result = await image.createFavicon(cmd.input, cmd.outputDir);

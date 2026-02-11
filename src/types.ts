@@ -137,6 +137,40 @@ export interface ConsoleMessage {
   location?: string;
 }
 
+export interface NetworkEntry {
+  url: string;
+  method: string;
+  resourceType: string;
+  status?: number;
+  statusText?: string;
+  requestHeaders?: Record<string, string>;
+  responseHeaders?: Record<string, string>;
+  timing?: {
+    startTime: number;
+    endTime?: number;
+    duration?: number;
+  };
+  size?: number;
+  error?: string;
+}
+
+export interface NetworkCommand {
+  cmd: 'network';
+  clear?: boolean;
+  filter?: 'all' | 'failed' | 'xhr' | 'fetch' | 'document' | 'script' | 'stylesheet' | 'image';
+}
+
+export interface InterceptCommand {
+  cmd: 'intercept';
+  action: 'block' | 'mock' | 'list' | 'clear';
+  pattern?: string;
+  response?: {
+    status?: number;
+    body?: string;
+    contentType?: string;
+  };
+}
+
 export type BrowserCommand =
   | GotoCommand
   | ClickCommand
@@ -158,7 +192,9 @@ export type BrowserCommand =
   | CropCommand
   | CompressCommand
   | ThumbnailCommand
-  | ConsoleCommand;
+  | ConsoleCommand
+  | NetworkCommand
+  | InterceptCommand;
 
 // Response types
 export interface SuccessResponse {
@@ -179,6 +215,9 @@ export interface SuccessResponse {
   size?: number;
   // Console fields
   messages?: ConsoleMessage[];
+  // Network fields
+  requests?: NetworkEntry[];
+  patterns?: string[];
 }
 
 export interface ErrorResponse {

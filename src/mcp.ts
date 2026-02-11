@@ -202,6 +202,63 @@ server.tool(
   })
 );
 
+// Network monitoring
+server.tool(
+  'network',
+  'Get captured network requests and responses',
+  {
+    filter: z
+      .enum(['all', 'failed', 'xhr', 'fetch', 'document', 'script', 'stylesheet', 'image'])
+      .optional()
+      .default('all')
+      .describe('Filter by request type or status'),
+    clear: z.boolean().optional().default(false).describe('Clear entries after retrieving'),
+  },
+  withLogging('network', async ({ filter, clear }) => {
+    await ensureLaunched();
+    const requests = browser.getNetwork(filter, clear);
+    return textResult(JSON.stringify({ ok: true, count: requests.length, requests }));
+  })
+);
+
+server.tool(
+  'intercept',
+  'Block or mock network requests matching a pattern',
+  {
+    action: z.enum(['block', 'mock', 'list', 'clear']).describe('Action to perform'),
+    pattern: z
+      .string()
+      .optional()
+      .describe('URL pattern to match (glob syntax, e.g., "**/api/*" or "**/*.png")'),
+    status: z.number().optional().describe('HTTP status code for mock response'),
+    body: z.string().optional().describe('Response body for mock'),
+    contentType: z
+      .string()
+      .optional()
+      .default('application/json')
+      .describe('Content-Type for mock response'),
+  },
+  withLogging('intercept', async ({ action, pattern, status, body, contentType }) => {
+    await ensureLaunched();
+    if (action === 'list') {
+      const patterns = browser.getInterceptPatterns();
+      return textResult(JSON.stringify({ ok: true, count: patterns.length, patterns }));
+    }
+    if (action === 'clear') {
+      await browser.clearIntercepts();
+      return textResult(JSON.stringify({ ok: true, message: 'All intercepts cleared' }));
+    }
+    if (!pattern) {
+      return textResult(JSON.stringify({ ok: false, error: 'Pattern required for block/mock' }));
+    }
+    const response = action === 'mock' ? { status, body, contentType } : undefined;
+    await browser.addIntercept(pattern, action, response);
+    return textResult(
+      JSON.stringify({ ok: true, action, pattern, patterns: browser.getInterceptPatterns() })
+    );
+  })
+);
+
 // Utility
 server.tool(
   'wait',
@@ -555,6 +612,69 @@ server.resource(
           uri: 'browser://console',
           mimeType: 'application/json',
           text: JSON.stringify({ launched: true, count: messages.length, messages }),
+        },
+      ],
+    };
+  }
+);
+
+// Resource: browser://network - All captured network requests
+server.resource(
+  'Network Requests',
+  'browser://network',
+  { description: 'All network requests captured from the browser', mimeType: 'application/json' },
+  async () => {
+    if (!launched) {
+      return {
+        contents: [
+          {
+            uri: 'browser://network',
+            mimeType: 'application/json',
+            text: JSON.stringify({ launched: false, requests: [] }),
+          },
+        ],
+      };
+    }
+    const requests = browser.getNetwork('all', false);
+    return {
+      contents: [
+        {
+          uri: 'browser://network',
+          mimeType: 'application/json',
+          text: JSON.stringify({ launched: true, count: requests.length, requests }),
+        },
+      ],
+    };
+  }
+);
+
+// Resource: browser://network/failed - Failed network requests only
+server.resource(
+  'Failed Requests',
+  'browser://network/failed',
+  {
+    description: 'Failed network requests (errors and 4xx/5xx status codes)',
+    mimeType: 'application/json',
+  },
+  async () => {
+    if (!launched) {
+      return {
+        contents: [
+          {
+            uri: 'browser://network/failed',
+            mimeType: 'application/json',
+            text: JSON.stringify({ launched: false, requests: [] }),
+          },
+        ],
+      };
+    }
+    const requests = browser.getNetwork('failed', false);
+    return {
+      contents: [
+        {
+          uri: 'browser://network/failed',
+          mimeType: 'application/json',
+          text: JSON.stringify({ launched: true, count: requests.length, requests }),
         },
       ],
     };
