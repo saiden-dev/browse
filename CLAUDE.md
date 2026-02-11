@@ -96,25 +96,46 @@ curl localhost:13373 -d '{"cmd":"screenshot","path":"screenshots/page.png"}'
 
 ## MCP Server
 
-Run as MCP server for Claude Code integration:
-```bash
-browse-mcp
-```
-
 The MCP server (`src/mcp.ts`) exposes all browser commands as tools. It uses stdio transport and auto-launches the browser on first command.
 
-### Plugin Integration
+### Production Setup
 
-When installed as a Claude Code plugin (`browse@saiden`), the MCP server is named `context`. Tools are accessed as:
+Add to your project's `.mcp.json`:
+```json
+{
+  "mcpServers": {
+    "browse": {
+      "command": "npx",
+      "args": ["browse-mcp"]
+    }
+  }
+}
+```
 
-- `mcp__context__goto` - Navigate to URL
-- `mcp__context__query` - Query elements by CSS selector
-- `mcp__context__click` - Click an element
-- `mcp__context__type` - Type into an input field
-- `mcp__context__screenshot` - Take a screenshot
-- `mcp__context__close` - Close the browser
+Tools are then accessible as `mcp__browse__*` (e.g., `mcp__browse__goto`, `mcp__browse__screenshot`).
 
-The plugin also provides slash commands: `/browse:start`, `/browse:goto`, `/browse:end`, etc.
+### Development (this project only)
+
+This project uses a local `.mcp.json` pointing to `dist/mcp.js` for development. Use `npm run dev` for hot-reload during development.
+
+### Launch Options
+
+Use the `launch` tool to configure browser mode before navigating:
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `headed` | `false` | Show browser window |
+| `fullscreen` | `false` | Native fullscreen mode (macOS, implies headed) |
+| `preview` | `false` | Highlight elements before actions with visual overlay |
+| `previewDelay` | `2000` | Duration of preview highlight in ms |
+| `width` | `1280` | Viewport width |
+| `height` | `800` | Viewport height |
+
+Example: Launch in fullscreen with preview mode:
+```
+mcp__browse__launch({ fullscreen: true, preview: true })
+mcp__browse__goto({ url: "https://example.com" })
+```
 
 ### Debugging Tools
 

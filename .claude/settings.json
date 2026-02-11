@@ -1,18 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "mcp__browse__goto",
-      "mcp__browse__back",
-      "mcp__browse__forward",
-      "mcp__browse__reload",
-      "mcp__browse__click",
-      "mcp__browse__type",
-      "mcp__browse__query",
-      "mcp__browse__url",
-      "mcp__browse__html",
-      "mcp__browse__screenshot",
-      "mcp__browse__eval",
-      "mcp__browse__wait"
+      "mcp__browse__*",
+      "mcp__browse-dev__*"
     ]
   },
   "enableAllProjectMcpServers": true

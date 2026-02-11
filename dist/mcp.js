@@ -10,7 +10,16 @@ import * as image from './image.js';
 import { stderrLogger as log } from './logger.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(resolve(__dirname, '../package.json'), 'utf-8'));
-const browser = new ClaudeBrowser({ headless: true, width: 1280, height: 800 });
+// Browser options configurable via launch tool
+let browserOptions = {
+    headless: true,
+    width: 1280,
+    height: 800,
+    fullscreen: false,
+    preview: false,
+    previewDelay: 2000,
+};
+let browser = new ClaudeBrowser(browserOptions);
 let launched = false;
 let currentScreenshotBuffer = null;
 async function ensureLaunched() {
@@ -43,6 +52,61 @@ const server = new McpServer({
     name: 'browse',
     version: pkg.version,
 });
+// Launch configuration
+server.tool('launch', 'Launch the browser with specific options. Call before goto to configure headed/fullscreen/preview modes.', {
+    headed: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe('Show browser window (default: false, headless)'),
+    fullscreen: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe('Launch in native fullscreen mode (macOS only, implies headed)'),
+    preview: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe('Highlight elements before actions with visual overlay'),
+    previewDelay: z
+        .number()
+        .optional()
+        .default(2000)
+        .describe('Preview highlight duration in ms'),
+    width: z.number().optional().default(1280).describe('Viewport width'),
+    height: z.number().optional().default(800).describe('Viewport height'),
+}, withLogging('launch', async ({ headed, fullscreen, preview, previewDelay, width, height }) => {
+    // Close existing browser if launched
+    if (launched) {
+        await browser.close();
+        launched = false;
+    }
+    // Update options - fullscreen/preview imply headed
+    browserOptions = {
+        headless: fullscreen || preview ? false : !headed,
+        width,
+        height,
+        fullscreen,
+        preview,
+        previewDelay,
+    };
+    // Create new browser with updated options
+    browser = new ClaudeBrowser(browserOptions);
+    await browser.launch();
+    launched = true;
+    return textResult(JSON.stringify({
+        ok: true,
+        message: 'Browser launched',
+        options: {
+            headed: !browserOptions.headless,
+            fullscreen,
+            preview,
+            previewDelay,
+            viewport: { width, height },
+        },
+    }));
+}));
 // Navigation
 server.tool('goto', 'Navigate to a URL', { url: z.string().url() }, withLogging('goto', async ({ url }) => {
     await ensureLaunched();
