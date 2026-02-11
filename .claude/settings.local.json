@@ -8,7 +8,12 @@
       "mcp__browse__network",
       "mcp__browse__metrics",
       "mcp__browse__a11y",
-      "mcp__browse__emulate"
+      "mcp__browse__emulate",
+      "WebFetch(domain:www.ruby-lang.org)",
+      "WebFetch(domain:blog.rust-lang.org)",
+      "WebFetch(domain:rubyreferences.github.io)",
+      "WebFetch(domain:releases.rs)",
+      "WebFetch(domain:asdf-vm.com)"
     ]
   }
 }
