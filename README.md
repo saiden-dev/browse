@@ -6,37 +6,6 @@
 [![Node.js](https://img.shields.io/node/v/@saiden/browse.svg)](https://nodejs.org)
 
 #### Headless browser automation for Claude Code using Playwright WebKit.
-## Installation
-
-```bash
-npm install @saiden/browse
-npx playwright install webkit
-```
-
-## CLI Usage
-
-```bash
-# Take a screenshot
-browse https://example.com
-
-# Custom viewport and output
-browse -o page.png -w 1920 -h 1080 https://example.com
-
-# Query elements
-browse -q "a[href]" https://example.com
-browse -q "img" -j https://example.com  # JSON output
-
-# Click and interact
-browse -c "button.submit" https://example.com
-browse -t "input[name=q]=hello" -c "button[type=submit]" https://google.com
-
-# Chain actions
-browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
-
-# Interactive mode (visible browser)
-browse -i --headed https://example.com
-```
-
 ## Claude Code Plugin (Recommended)
 
 Install as a Claude Code plugin for the best integration:
@@ -80,6 +49,39 @@ claude plugin marketplace update saiden && claude plugin update browse@saiden
 | `@browse:browser://html` | Page HTML (truncated to 10KB) |
 | `@browse:browser://html/full` | Complete page HTML |
 | `@browse:browser://screenshot` | Page screenshot as base64 PNG |
+
+---
+
+## Installation (npm)
+
+```bash
+npm install @saiden/browse
+npx playwright install webkit
+```
+
+## CLI Usage
+
+```bash
+# Take a screenshot
+browse https://example.com
+
+# Custom viewport and output
+browse -o page.png -w 1920 -h 1080 https://example.com
+
+# Query elements
+browse -q "a[href]" https://example.com
+browse -q "img" -j https://example.com  # JSON output
+
+# Click and interact
+browse -c "button.submit" https://example.com
+browse -t "input[name=q]=hello" -c "button[type=submit]" https://google.com
+
+# Chain actions
+browse -c ".cookie-accept" -c "a.nav-link" -q "h1" https://example.com
+
+# Interactive mode (visible browser)
+browse -i --headed https://example.com
+```
 
 ## MCP Server (Standalone)
 
