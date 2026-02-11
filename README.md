@@ -5,54 +5,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/node/v/@saiden/browse.svg)](https://nodejs.org)
 
-#### Headless browser automation for Claude Code using Playwright WebKit.
-## Claude Code Plugin (Recommended)
+Headless browser automation via MCP using Playwright WebKit.
 
-Install as a Claude Code plugin for the best integration:
-
-```bash
-# Add the saiden marketplace (one-time)
-claude plugin marketplace add https://github.com/saiden-dev/claude-plugins
-
-# Install the plugin
-claude plugin install browse@saiden
-
-# Update to latest version
-claude plugin marketplace update saiden && claude plugin update browse@saiden
-```
-
-**Prerequisites:** Node.js 18+, Playwright WebKit (`npx playwright install webkit`)
-
-### Plugin Features
-
-**Slash Commands:**
-
-| Command | Description |
-|---------|-------------|
-| `/browse:start` | Start an interactive browsing session |
-| `/browse:goto <url>` | Navigate to URL and describe findings |
-| `/browse:screenshot` | Take a screenshot of the current page |
-| `/browse:scrape <url>` | Scrape content from a webpage |
-| `/browse:analyze` | Analyze current page content and structure |
-| `/browse:extract [selector]` | Extract structured data from page |
-| `/browse:fill [data]` | Help fill out forms |
-| `/browse:compare [action]` | Compare page states before/after action |
-| `/browse:save` | Save current session state to file |
-| `/browse:restore` | Restore a previously saved session |
-| `/browse:end` | End the browsing session and close browser |
-
-**MCP Resources (@ mentions):**
-
-| Resource | Description |
-|----------|-------------|
-| `@browse:browser://state` | Browser state (URL, title, launched) |
-| `@browse:browser://html` | Page HTML (truncated to 10KB) |
-| `@browse:browser://html/full` | Complete page HTML |
-| `@browse:browser://screenshot` | Page screenshot as base64 PNG |
-
----
-
-## Installation (npm)
+## Installation
 
 ```bash
 npm install @saiden/browse
@@ -90,28 +45,34 @@ browse -p -c "button.submit" https://example.com
 browse -p --preview-delay 3000 -c ".nav-link" https://example.com
 ```
 
-## MCP Server (Standalone)
+## MCP Server
 
-Use with any MCP-compatible client:
-
-```bash
-# Run the MCP server
-browse-mcp
-```
-
-Add to Claude Code's MCP config (`~/.claude/settings.json`):
+Add to your MCP client config (e.g., `~/.claude/settings.json` or project `.mcp.json`):
 
 ```json
 {
   "mcpServers": {
-    "browser": {
-      "command": "browse-mcp"
+    "browse": {
+      "command": "npx",
+      "args": ["browse-mcp"]
     }
   }
 }
 ```
 
+Or run directly:
+
+```bash
+browse-mcp
+```
+
 ### MCP Tools Reference
+
+**Browser Lifecycle:**
+| Tool | Description |
+|------|-------------|
+| `launch` | Launch browser with options (headed, fullscreen, preview, viewport) |
+| `close` | Close the browser and end session |
 
 **Navigation & Interaction:**
 | Tool | Description |
@@ -126,7 +87,6 @@ Add to Claude Code's MCP config (`~/.claude/settings.json`):
 | `upload` | Upload files to a file input |
 | `back`, `forward`, `reload` | Browser navigation |
 | `wait` | Wait for a specified time |
-| `close` | Close the browser and end session |
 
 **Debugging & Inspection:**
 | Tool | Description |
