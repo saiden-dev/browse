@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__browse__cookies",
+      "mcp__browse__storage",
+      "mcp__browse__console",
+      "mcp__browse__errors",
+      "mcp__browse__network",
+      "mcp__browse__metrics",
+      "mcp__browse__a11y",
+      "mcp__browse__emulate"
+    ]
+  }
+}
