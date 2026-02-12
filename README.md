@@ -1,11 +1,19 @@
-# @saiden/browse
+<p align="center">
+  <img src="logo.png" alt="browse" width="120" />
+</p>
 
-[![npm version](https://img.shields.io/npm/v/@saiden/browse.svg)](https://www.npmjs.com/package/@saiden/browse)
-[![CI](https://github.com/saiden-dev/browse/actions/workflows/ci.yml/badge.svg)](https://github.com/saiden-dev/browse/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/node/v/@saiden/browse.svg)](https://nodejs.org)
+<h1 align="center">@saiden/browse</h1>
 
-Headless browser automation via MCP using Playwright WebKit.
+<p align="center">
+  <a href="https://www.npmjs.com/package/@saiden/browse"><img src="https://img.shields.io/npm/v/@saiden/browse.svg" alt="npm version"></a>
+  <a href="https://github.com/saiden-dev/browse/actions/workflows/ci.yml"><img src="https://github.com/saiden-dev/browse/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@saiden/browse.svg" alt="Node.js"></a>
+</p>
+
+<p align="center">
+  Headless browser automation via MCP using Playwright WebKit.
+</p>
 
 ## Installation
 
