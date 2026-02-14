@@ -111,6 +111,7 @@ export declare class ClaudeBrowser {
     private handleDialogCommand;
     private handleCookiesCommand;
     private handleStorageCommand;
+    private handleImportCommand;
     executeCommand(cmd: BrowserCommand): Promise<CommandResponse>;
 }
 //# sourceMappingURL=browser.d.ts.map

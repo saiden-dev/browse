@@ -252,7 +252,13 @@ export interface EmulateCommand {
     cmd: 'emulate';
     device: string;
 }
-export type BrowserCommand = GotoCommand | ClickCommand | TypeCommand | QueryCommand | ScreenshotCommand | UrlCommand | HtmlCommand | BackCommand | ForwardCommand | ReloadCommand | WaitCommand | NewPageCommand | CloseCommand | EvalCommand | FaviconCommand | ConvertCommand | ResizeCommand | CropCommand | CompressCommand | ThumbnailCommand | ConsoleCommand | NetworkCommand | InterceptCommand | ErrorsCommand | MetricsCommand | A11yCommand | DialogCommand | CookiesCommand | StorageCommand | HoverCommand | SelectCommand | KeysCommand | UploadCommand | ScrollCommand | ViewportCommand | EmulateCommand;
+export interface ImportCommand {
+    cmd: 'import';
+    source: 'safari';
+    domain?: string;
+    profile?: string;
+}
+export type BrowserCommand = GotoCommand | ClickCommand | TypeCommand | QueryCommand | ScreenshotCommand | UrlCommand | HtmlCommand | BackCommand | ForwardCommand | ReloadCommand | WaitCommand | NewPageCommand | CloseCommand | EvalCommand | FaviconCommand | ConvertCommand | ResizeCommand | CropCommand | CompressCommand | ThumbnailCommand | ConsoleCommand | NetworkCommand | InterceptCommand | ErrorsCommand | MetricsCommand | A11yCommand | DialogCommand | CookiesCommand | StorageCommand | HoverCommand | SelectCommand | KeysCommand | UploadCommand | ScrollCommand | ViewportCommand | EmulateCommand | ImportCommand;
 export interface SuccessResponse {
     ok: true;
     url?: string;
@@ -291,6 +297,9 @@ export interface SuccessResponse {
         height: number;
     };
     selected?: string[];
+    imported?: number;
+    source?: string;
+    domains?: string[];
 }
 export interface ErrorResponse {
     ok: false;

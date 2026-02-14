@@ -301,6 +301,14 @@ export interface EmulateCommand {
   device: string;
 }
 
+// Safari import
+export interface ImportCommand {
+  cmd: 'import';
+  source: 'safari';
+  domain?: string;
+  profile?: string;
+}
+
 export type BrowserCommand =
   | GotoCommand
   | ClickCommand
@@ -337,7 +345,8 @@ export type BrowserCommand =
   | UploadCommand
   | ScrollCommand
   | ViewportCommand
-  | EmulateCommand;
+  | EmulateCommand
+  | ImportCommand;
 
 // Response types
 export interface SuccessResponse {
@@ -378,6 +387,10 @@ export interface SuccessResponse {
   viewport?: { width: number; height: number };
   // Selected values
   selected?: string[];
+  // Import fields
+  imported?: number;
+  source?: string;
+  domains?: string[];
 }
 
 export interface ErrorResponse {

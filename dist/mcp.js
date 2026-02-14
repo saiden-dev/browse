@@ -69,11 +69,7 @@ server.tool('launch', 'Launch the browser with specific options. Call before got
         .optional()
         .default(false)
         .describe('Highlight elements before actions with visual overlay'),
-    previewDelay: z
-        .number()
-        .optional()
-        .default(2000)
-        .describe('Preview highlight duration in ms'),
+    previewDelay: z.number().optional().default(2000).describe('Preview highlight duration in ms'),
     width: z.number().optional().default(1280).describe('Viewport width'),
     height: z.number().optional().default(800).describe('Viewport height'),
 }, withLogging('launch', async ({ headed, fullscreen, preview, previewDelay, width, height }) => {
@@ -449,6 +445,19 @@ server.tool('session_restore', 'Restore a previously saved session state from a 
         cookiesRestored: data.cookies?.length || 0,
         savedAt: data.savedAt,
     }));
+}));
+// Browser import
+server.tool('import', 'Import cookies from Safari browser (macOS only). Requires Full Disk Access permission.', {
+    source: z.enum(['safari']).describe('Browser to import from (currently only Safari supported)'),
+    domain: z
+        .string()
+        .optional()
+        .describe('Filter cookies to specific domain (e.g., "github.com")'),
+    profile: z.string().optional().describe('Safari profile/WebKit data store ID (optional)'),
+}, withLogging('import', async ({ source, domain, profile }) => {
+    await ensureLaunched();
+    const result = await browser.executeCommand({ cmd: 'import', source, domain, profile });
+    return textResult(JSON.stringify(result));
 }));
 // Image processing
 server.tool('favicon', 'Generate a complete favicon set from an image (16x16, 32x32, 48x48, apple-touch-icon 180x180, android-chrome 192x192 and 512x512)', {

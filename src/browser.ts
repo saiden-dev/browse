@@ -5,6 +5,7 @@ import { type Browser, type BrowserContext, type Page, type Route, webkit } from
 
 const execAsync = promisify(exec);
 import * as image from './image.js';
+import * as safari from './safari.js';
 import type {
   A11yNode,
   BrowserCommand,
@@ -15,6 +16,7 @@ import type {
   DialogCommand,
   DialogEntry,
   ElementInfo,
+  ImportCommand,
   MetricsData,
   NetworkEntry,
   PageError,
@@ -761,6 +763,43 @@ export class ClaudeBrowser {
     }
   }
 
+  private async handleImportCommand(cmd: ImportCommand): Promise<CommandResponse> {
+    const context = this.getContext();
+    if (!context) throw new Error('Browser not launched');
+
+    if (cmd.source === 'safari') {
+      const cookies = await safari.importSafariCookies({
+        domain: cmd.domain,
+        profile: cmd.profile,
+      });
+
+      if (cookies.length === 0) {
+        return {
+          ok: true,
+          imported: 0,
+          source: 'safari',
+          domains: [],
+        };
+      }
+
+      // Convert to Playwright format and add to context
+      const playwrightCookies = cookies.map(safari.toPlaywrightCookie);
+      await context.addCookies(playwrightCookies);
+
+      // Get unique domains for reporting
+      const domains = [...new Set(cookies.map((c) => c.domain))];
+
+      return {
+        ok: true,
+        imported: cookies.length,
+        source: 'safari',
+        domains,
+      };
+    }
+
+    return { ok: false, error: `Unknown import source: ${cmd.source}` };
+  }
+
   async executeCommand(cmd: BrowserCommand): Promise<CommandResponse> {
     try {
       switch (cmd.cmd) {
@@ -955,6 +994,8 @@ export class ClaudeBrowser {
             size: result.size,
           };
         }
+        case 'import':
+          return this.handleImportCommand(cmd);
         default: {
           const _exhaustive: never = cmd;
           return { ok: false, error: `Unknown command: ${(_exhaustive as { cmd: string }).cmd}` };

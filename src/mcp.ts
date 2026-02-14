@@ -677,6 +677,25 @@ server.tool(
   })
 );
 
+// Browser import
+server.tool(
+  'import',
+  'Import cookies from Safari browser (macOS only). Requires Full Disk Access permission.',
+  {
+    source: z.enum(['safari']).describe('Browser to import from (currently only Safari supported)'),
+    domain: z
+      .string()
+      .optional()
+      .describe('Filter cookies to specific domain (e.g., "github.com")'),
+    profile: z.string().optional().describe('Safari profile/WebKit data store ID (optional)'),
+  },
+  withLogging('import', async ({ source, domain, profile }) => {
+    await ensureLaunched();
+    const result = await browser.executeCommand({ cmd: 'import', source, domain, profile });
+    return textResult(JSON.stringify(result));
+  })
+);
+
 // Image processing
 server.tool(
   'favicon',

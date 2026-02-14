@@ -4,6 +4,7 @@ import { promisify } from 'node:util';
 import { webkit } from 'playwright';
 const execAsync = promisify(exec);
 import * as image from './image.js';
+import * as safari from './safari.js';
 export class ClaudeBrowser {
     browser = null;
     context = null;
@@ -669,6 +670,37 @@ export class ClaudeBrowser {
                 return { ok: false, error: 'Unknown storage action' };
         }
     }
+    async handleImportCommand(cmd) {
+        const context = this.getContext();
+        if (!context)
+            throw new Error('Browser not launched');
+        if (cmd.source === 'safari') {
+            const cookies = await safari.importSafariCookies({
+                domain: cmd.domain,
+                profile: cmd.profile,
+            });
+            if (cookies.length === 0) {
+                return {
+                    ok: true,
+                    imported: 0,
+                    source: 'safari',
+                    domains: [],
+                };
+            }
+            // Convert to Playwright format and add to context
+            const playwrightCookies = cookies.map(safari.toPlaywrightCookie);
+            await context.addCookies(playwrightCookies);
+            // Get unique domains for reporting
+            const domains = [...new Set(cookies.map((c) => c.domain))];
+            return {
+                ok: true,
+                imported: cookies.length,
+                source: 'safari',
+                domains,
+            };
+        }
+        return { ok: false, error: `Unknown import source: ${cmd.source}` };
+    }
     async executeCommand(cmd) {
         try {
             switch (cmd.cmd) {
@@ -856,6 +888,8 @@ export class ClaudeBrowser {
                         size: result.size,
                     };
                 }
+                case 'import':
+                    return this.handleImportCommand(cmd);
                 default: {
                     const _exhaustive = cmd;
                     return { ok: false, error: `Unknown command: ${_exhaustive.cmd}` };
