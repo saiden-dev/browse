@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@saiden/browse"><img src="https://img.shields.io/npm/v/@saiden/browse.svg" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@saiden/browse"><img src="https://img.shields.io/npm/dm/@saiden/browse.svg" alt="npm downloads"></a>
   <a href="https://github.com/saiden-dev/browse/actions/workflows/ci.yml"><img src="https://github.com/saiden-dev/browse/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@saiden/browse.svg" alt="Node.js"></a>
@@ -123,6 +124,7 @@ browse-mcp
 | `dialog` | Configure how browser dialogs are handled |
 | `session_save` | Save session state to file |
 | `session_restore` | Restore session from file |
+| `import` | Import cookies from Safari (macOS, requires Full Disk Access) |
 
 **Viewport & Emulation:**
 | Tool | Description |
