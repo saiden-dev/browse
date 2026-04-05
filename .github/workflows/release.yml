@@ -62,3 +62,70 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
+
+  update-homebrew:
+    name: update-homebrew
+    needs: publish-npm
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for npm registry propagation
+        run: sleep 30
+
+      - name: Get npm tarball checksum
+        id: checksums
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          URL="https://registry.npmjs.org/@saiden/browse/-/browse-${VERSION}.tgz"
+          curl -fsSL "${URL}" -o npm-tarball.tgz
+          sha=$(sha256sum npm-tarball.tgz | cut -d' ' -f1)
+          echo "npm_sha=${sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Update Homebrew formula
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA_NPM="${{ steps.checksums.outputs.npm_sha }}"
+
+          cat > /tmp/browse.rb <<EOF
+          class Browse < Formula
+            desc "Headless browser automation for Claude Code using Playwright WebKit"
+            homepage "https://github.com/saiden-dev/browse"
+            url "https://registry.npmjs.org/@saiden/browse/-/browse-${VERSION}.tgz"
+            sha256 "${SHA_NPM}"
+            license "MIT"
+
+            depends_on "node"
+
+            def install
+              system "npm", "install", *std_npm_args
+              bin.install_symlink Dir["#{libexec}/bin/*"]
+            end
+
+            def caveats
+              <<~EOS
+                To complete installation, run:
+                  npx playwright install webkit
+              EOS
+            end
+
+            test do
+              assert_match "browse", shell_output("#{bin}/browse --help")
+            end
+          end
+          EOF
+
+          sed -i 's/^          //' /tmp/browse.rb
+
+          CONTENT=$(base64 -w0 /tmp/browse.rb)
+          SHA=$(gh api repos/saiden-dev/homebrew-tap/contents/Formula/browse.rb --jq '.sha')
+
+          gh api repos/saiden-dev/homebrew-tap/contents/Formula/browse.rb \
+            -X PUT \
+            -f message="Update browse to ${VERSION}" \
+            -f content="${CONTENT}" \
+            -f sha="${SHA}"
