@@ -16,7 +16,16 @@
   Headless browser automation via MCP using Playwright WebKit.
 </p>
 
-## Installation
+## Install
+
+### Homebrew (macOS / Linux)
+
+```bash
+brew install saiden-dev/tap/browse
+npx playwright install webkit
+```
+
+### npm
 
 ```bash
 npm install @saiden/browse
