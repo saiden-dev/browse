@@ -5,6 +5,7 @@ export interface BrowserOptions {
     fullscreen?: boolean;
     preview?: boolean;
     previewDelay?: number;
+    stealth?: boolean;
 }
 export interface ElementInfo {
     tag: string;
@@ -254,7 +255,7 @@ export interface EmulateCommand {
 }
 export interface ImportCommand {
     cmd: 'import';
-    source: 'safari';
+    source: 'safari' | 'firefox';
     domain?: string;
     profile?: string;
 }

@@ -18,6 +18,7 @@ let browserOptions = {
     fullscreen: false,
     preview: false,
     previewDelay: 2000,
+    stealth: false,
 };
 let browser = new ClaudeBrowser(browserOptions);
 let launched = false;
@@ -72,7 +73,12 @@ server.tool('launch', 'Launch the browser with specific options. Call before got
     previewDelay: z.number().optional().default(2000).describe('Preview highlight duration in ms'),
     width: z.number().optional().default(1280).describe('Viewport width'),
     height: z.number().optional().default(800).describe('Viewport height'),
-}, withLogging('launch', async ({ headed, fullscreen, preview, previewDelay, width, height }) => {
+    stealth: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe('Enable stealth mode to reduce bot detection. Patches navigator.webdriver, plugins, WebGL, permissions, and sets a realistic Safari user-agent. See STEALTH.md for details.'),
+}, withLogging('launch', async ({ headed, fullscreen, preview, previewDelay, width, height, stealth }) => {
     // Close existing browser if launched
     if (launched) {
         await browser.close();
@@ -86,6 +92,7 @@ server.tool('launch', 'Launch the browser with specific options. Call before got
         fullscreen,
         preview,
         previewDelay,
+        stealth,
     };
     // Create new browser with updated options
     browser = new ClaudeBrowser(browserOptions);
@@ -93,12 +100,13 @@ server.tool('launch', 'Launch the browser with specific options. Call before got
     launched = true;
     return textResult(JSON.stringify({
         ok: true,
-        message: 'Browser launched',
+        message: `Browser launched${stealth ? ' (stealth mode)' : ''}`,
         options: {
             headed: !browserOptions.headless,
             fullscreen,
             preview,
             previewDelay,
+            stealth,
             viewport: { width, height },
         },
     }));
@@ -447,13 +455,16 @@ server.tool('session_restore', 'Restore a previously saved session state from a 
     }));
 }));
 // Browser import
-server.tool('import', 'Import cookies from Safari browser (macOS only). Requires Full Disk Access permission.', {
-    source: z.enum(['safari']).describe('Browser to import from (currently only Safari supported)'),
+server.tool('import', 'Import cookies from Safari or Firefox browser. Safari requires Full Disk Access permission (macOS only). Firefox works on macOS, Linux, and Windows.', {
+    source: z.enum(['safari', 'firefox']).describe('Browser to import from'),
     domain: z
         .string()
         .optional()
         .describe('Filter cookies to specific domain (e.g., "github.com")'),
-    profile: z.string().optional().describe('Safari profile/WebKit data store ID (optional)'),
+    profile: z
+        .string()
+        .optional()
+        .describe('Safari profile/WebKit data store ID, or Firefox profile name (optional)'),
 }, withLogging('import', async ({ source, domain, profile }) => {
     await ensureLaunched();
     const result = await browser.executeCommand({ cmd: 'import', source, domain, profile });

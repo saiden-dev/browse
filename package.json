@@ -1,6 +1,6 @@
 {
   "name": "@saiden/browse",
-  "version": "0.2.20",
+  "version": "0.2.20-8ca7263",
   "description": "Headless browser automation for Claude Code using Playwright WebKit",
   "type": "module",
   "main": "dist/index.js",
@@ -56,7 +56,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
-    "@types/node": "^20.11.0",
+    "@types/node": "^25.6.0",
     "@types/sharp": "^0.31.1",
     "@vitest/coverage-v8": "^4.0.18",
     "tsx": "^4.21.0",

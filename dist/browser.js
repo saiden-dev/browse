@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { webkit } from 'playwright';
 const execAsync = promisify(exec);
+import * as firefox from './firefox.js';
 import * as image from './image.js';
 import * as safari from './safari.js';
 export class ClaudeBrowser {
@@ -24,16 +25,32 @@ export class ClaudeBrowser {
             fullscreen: options.fullscreen ?? false,
             preview: options.preview ?? false,
             previewDelay: options.previewDelay ?? 2000,
+            stealth: options.stealth ?? false,
         };
     }
     async launch() {
         this.browser = await webkit.launch({ headless: this.options.headless });
-        this.context = await this.browser.newContext({
+        const contextOptions = {
             viewport: {
                 width: this.options.width,
                 height: this.options.height,
             },
-        });
+        };
+        if (this.options.stealth) {
+            Object.assign(contextOptions, {
+                userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+                locale: 'en-US',
+                timezoneId: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                colorScheme: 'light',
+                extraHTTPHeaders: {
+                    'Accept-Language': 'en-US,en;q=0.9',
+                },
+            });
+        }
+        this.context = await this.browser.newContext(contextOptions);
+        if (this.options.stealth) {
+            await this.applyStealthPatches();
+        }
         this.page = await this.context.newPage();
         this.setupConsoleListener(this.page);
         this.setupNetworkListener(this.page);
@@ -42,6 +59,85 @@ export class ClaudeBrowser {
         if (this.options.fullscreen && !this.options.headless) {
             await this.enterFullscreen();
         }
+    }
+    /**
+     * Apply stealth patches via addInitScript.
+     * These run before any page script in all Playwright engines (WebKit included).
+     * Scripts are passed as strings since they execute in browser context, not Node.
+     * See STEALTH.md for full documentation.
+     */
+    async applyStealthPatches() {
+        if (!this.context)
+            return;
+        // 1. WebDriver flag — set to undefined, not false
+        // Some detectors specifically check for false as a signal of patching
+        await this.context.addInitScript(`
+      Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    `);
+        // 2. Plugins & MimeTypes — headless reports empty arrays
+        await this.context.addInitScript(`
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [
+          { name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
+          { name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer', description: '' },
+          { name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer', description: '' },
+        ],
+      });
+      Object.defineProperty(navigator, 'mimeTypes', {
+        get: () => [
+          { type: 'application/pdf', suffixes: 'pdf', description: 'Portable Document Format' },
+        ],
+      });
+    `);
+        // 3. Permissions API — fix notifications query inconsistency
+        await this.context.addInitScript(`
+      const __origQuery = navigator.permissions.query.bind(navigator.permissions);
+      Object.defineProperty(navigator.permissions, 'query', {
+        value: (params) =>
+          params.name === 'notifications'
+            ? Promise.resolve({ state: Notification.permission })
+            : __origQuery(params),
+      });
+    `);
+        // 4. WebGL renderer masking — spoof GPU vendor/renderer
+        // Params 37445 (UNMASKED_VENDOR_WEBGL) and 37446 (UNMASKED_RENDERER_WEBGL)
+        await this.context.addInitScript(`
+      const __origGetParam = WebGLRenderingContext.prototype.getParameter;
+      WebGLRenderingContext.prototype.getParameter = function(p) {
+        if (p === 37445) return 'Apple GPU';
+        if (p === 37446) return 'Apple M1 Pro';
+        return __origGetParam.call(this, p);
+      };
+      if (typeof WebGL2RenderingContext !== 'undefined') {
+        const __origGetParam2 = WebGL2RenderingContext.prototype.getParameter;
+        WebGL2RenderingContext.prototype.getParameter = function(p) {
+          if (p === 37445) return 'Apple GPU';
+          if (p === 37446) return 'Apple M1 Pro';
+          return __origGetParam2.call(this, p);
+        };
+      }
+    `);
+        // 5. iframe contentWindow isolation — apply webdriver patch in child frames
+        await this.context.addInitScript(`
+      const __iframeDesc = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'contentWindow');
+      if (__iframeDesc) {
+        Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {
+          get: function() {
+            const win = __iframeDesc.get?.call(this);
+            if (win) {
+              try {
+                Object.defineProperty(win.navigator, 'webdriver', { get: () => undefined });
+              } catch(e) {}
+            }
+            return win;
+          },
+        });
+      }
+    `);
+        // 6. Languages consistency
+        await this.context.addInitScript(`
+      Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+    `);
     }
     async enterFullscreen() {
         if (process.platform !== 'darwin') {
@@ -696,6 +792,29 @@ export class ClaudeBrowser {
                 ok: true,
                 imported: cookies.length,
                 source: 'safari',
+                domains,
+            };
+        }
+        if (cmd.source === 'firefox') {
+            const cookies = firefox.importFirefoxCookies({
+                domain: cmd.domain,
+                profile: cmd.profile,
+            });
+            if (cookies.length === 0) {
+                return {
+                    ok: true,
+                    imported: 0,
+                    source: 'firefox',
+                    domains: [],
+                };
+            }
+            const playwrightCookies = cookies.map(firefox.toPlaywrightCookie);
+            await context.addCookies(playwrightCookies);
+            const domains = [...new Set(cookies.map((c) => c.domain))];
+            return {
+                ok: true,
+                imported: cookies.length,
+                source: 'firefox',
                 domains,
             };
         }

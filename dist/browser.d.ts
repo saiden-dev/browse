@@ -13,6 +13,13 @@ export declare class ClaudeBrowser {
     private interceptPatterns;
     constructor(options?: BrowserOptions);
     launch(): Promise<void>;
+    /**
+     * Apply stealth patches via addInitScript.
+     * These run before any page script in all Playwright engines (WebKit included).
+     * Scripts are passed as strings since they execute in browser context, not Node.
+     * See STEALTH.md for full documentation.
+     */
+    private applyStealthPatches;
     private enterFullscreen;
     private previewAction;
     private setupErrorListener;
