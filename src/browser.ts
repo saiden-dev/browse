@@ -394,7 +394,12 @@ export class ClaudeBrowser {
 
   async goto(url: string): Promise<{ url: string; title: string }> {
     const page = this.ensurePage();
-    await page.goto(url, { waitUntil: 'networkidle' });
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    // Best-effort wait for network to settle — SPAs with persistent connections
+    // (LinkedIn, Twitter, Gmail) never reach networkidle, so cap at 5s
+    await Promise.race([page.waitForLoadState('networkidle'), page.waitForTimeout(5000)]).catch(
+      () => {}
+    );
     return { url: page.url(), title: await page.title() };
   }
 
@@ -402,7 +407,9 @@ export class ClaudeBrowser {
     const page = this.ensurePage();
     await this.previewAction(selector, 'CLICK');
     await page.click(selector);
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await Promise.race([page.waitForLoadState('networkidle'), page.waitForTimeout(5000)]).catch(
+      () => {}
+    );
     return { url: page.url() };
   }
 

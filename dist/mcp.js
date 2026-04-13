@@ -437,7 +437,8 @@ server.tool('session_restore', 'Restore a previously saved session state from a 
     }
     // Navigate to saved URL
     if (data.url) {
-        await page.goto(data.url, { waitUntil: 'networkidle' });
+        await page.goto(data.url, { waitUntil: 'domcontentloaded' });
+        await Promise.race([page.waitForLoadState('networkidle'), page.waitForTimeout(5000)]).catch(() => { });
     }
     // Restore storage (runs in browser context)
     const local = data.localStorage || {};

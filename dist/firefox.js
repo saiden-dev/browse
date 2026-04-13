@@ -225,10 +225,16 @@ export function toPlaywrightCookie(cookie) {
     if (expires <= 0) {
         expires = -1;
     }
+    // Normalize domain: Firefox sometimes stores ".www.example.com" which Playwright
+    // won't match for "www.example.com". Strip ".www." prefix to ".example.com".
+    let domain = cookie.domain;
+    if (domain.startsWith('.www.')) {
+        domain = domain.slice(4); // ".www.example.com" -> ".example.com"
+    }
     return {
         name: cookie.name,
         value: cookie.value,
-        domain: cookie.domain,
+        domain,
         path: cookie.path,
         expires,
         secure: cookie.secure,

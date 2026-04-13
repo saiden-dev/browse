@@ -665,7 +665,10 @@ server.tool(
 
     // Navigate to saved URL
     if (data.url) {
-      await page.goto(data.url, { waitUntil: 'networkidle' });
+      await page.goto(data.url, { waitUntil: 'domcontentloaded' });
+      await Promise.race([page.waitForLoadState('networkidle'), page.waitForTimeout(5000)]).catch(
+        () => {}
+      );
     }
 
     // Restore storage (runs in browser context)
