@@ -272,12 +272,23 @@ export function toPlaywrightCookie(cookie: FirefoxCookie): {
   httpOnly: boolean;
   sameSite: 'Strict' | 'Lax' | 'None';
 } {
+  // Firefox uses 0 for session cookies; Playwright requires -1 or positive unix timestamp (seconds).
+  // Some Firefox cookies store expiry in milliseconds instead of seconds — detect and convert.
+  // Any expiry > year 2100 in seconds (4102444800) is likely milliseconds.
+  let expires = cookie.expires;
+  if (expires > 4102444800) {
+    expires = Math.floor(expires / 1000);
+  }
+  if (expires <= 0) {
+    expires = -1;
+  }
+
   return {
     name: cookie.name,
     value: cookie.value,
     domain: cookie.domain,
     path: cookie.path,
-    expires: cookie.expires,
+    expires,
     secure: cookie.secure,
     httpOnly: cookie.httpOnly,
     sameSite: cookie.sameSite,
