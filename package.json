@@ -42,7 +42,7 @@
   "license": "BUSL-1.1",
   "repository": {
     "type": "git",
-    "url": "https://github.com/saiden-dev/browse"
+    "url": "git+https://github.com/saiden-dev/browse.git"
   },
   "engines": {
     "node": ">=18"
