@@ -168,6 +168,31 @@ server.tool('screenshot', 'Take a screenshot of the current page', {
     const result = await browser.screenshot(path, fullPage);
     return textResult(JSON.stringify({ ok: true, path: result.path }));
 }));
+// Preview — navigate + screenshot in one call, optional POST to preview endpoint
+server.tool('preview', 'Navigate to a URL and take a screenshot in one call. Optionally POST the result to a preview endpoint.', {
+    url: z.string().describe('URL or file:///path to preview'),
+    width: z.number().optional().default(1280).describe('Viewport width'),
+    height: z.number().optional().default(800).describe('Viewport height'),
+    fullPage: z.boolean().optional().default(false),
+    output: z.string().optional().default('/tmp/preview.png').describe('Screenshot output path'),
+    previewUrl: z.string().optional().describe('HTTP endpoint to POST screenshot result to'),
+    title: z.string().optional().describe('Title sent with preview POST'),
+    caption: z.string().optional().describe('Caption sent with preview POST'),
+}, withLogging('preview', async ({ url, width, height, fullPage, output, previewUrl, title, caption }) => {
+    await ensureLaunched();
+    const result = await browser.executeCommand({
+        cmd: 'preview',
+        url,
+        width,
+        height,
+        fullPage,
+        output,
+        previewUrl,
+        title,
+        caption,
+    });
+    return textResult(JSON.stringify(result));
+}));
 // Eval
 server.tool('eval', 'Execute JavaScript in the browser context', { script: z.string() }, withLogging('eval', async ({ script }) => {
     await ensureLaunched();

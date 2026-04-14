@@ -259,7 +259,18 @@ export interface ImportCommand {
     domain?: string;
     profile?: string;
 }
-export type BrowserCommand = GotoCommand | ClickCommand | TypeCommand | QueryCommand | ScreenshotCommand | UrlCommand | HtmlCommand | BackCommand | ForwardCommand | ReloadCommand | WaitCommand | NewPageCommand | CloseCommand | EvalCommand | FaviconCommand | ConvertCommand | ResizeCommand | CropCommand | CompressCommand | ThumbnailCommand | ConsoleCommand | NetworkCommand | InterceptCommand | ErrorsCommand | MetricsCommand | A11yCommand | DialogCommand | CookiesCommand | StorageCommand | HoverCommand | SelectCommand | KeysCommand | UploadCommand | ScrollCommand | ViewportCommand | EmulateCommand | ImportCommand;
+export type BrowserCommand = GotoCommand | ClickCommand | TypeCommand | QueryCommand | ScreenshotCommand | UrlCommand | HtmlCommand | BackCommand | ForwardCommand | ReloadCommand | WaitCommand | NewPageCommand | CloseCommand | EvalCommand | FaviconCommand | ConvertCommand | ResizeCommand | CropCommand | CompressCommand | ThumbnailCommand | ConsoleCommand | NetworkCommand | InterceptCommand | ErrorsCommand | MetricsCommand | A11yCommand | DialogCommand | CookiesCommand | StorageCommand | HoverCommand | SelectCommand | KeysCommand | UploadCommand | ScrollCommand | ViewportCommand | EmulateCommand | ImportCommand | PreviewCommand;
+export interface PreviewCommand {
+    cmd: 'preview';
+    url: string;
+    width?: number;
+    height?: number;
+    fullPage?: boolean;
+    output?: string;
+    previewUrl?: string;
+    title?: string;
+    caption?: string;
+}
 export interface SuccessResponse {
     ok: true;
     url?: string;
@@ -269,6 +280,7 @@ export interface SuccessResponse {
     count?: number;
     elements?: ElementInfo[];
     result?: unknown;
+    posted?: boolean;
     files?: string[];
     outputDir?: string;
     width?: number;

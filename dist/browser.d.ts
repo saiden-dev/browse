@@ -118,6 +118,13 @@ export declare class ClaudeBrowser {
     private handleDialogCommand;
     private handleCookiesCommand;
     private handleStorageCommand;
+    private handlePreviewCommand;
+    /**
+     * POST a screenshot to a preview endpoint.
+     * Payload: { source: "file:///path", title, caption }
+     * Silent failure — returns false if endpoint is unreachable.
+     */
+    private postPreview;
     private handleImportCommand;
     executeCommand(cmd: BrowserCommand): Promise<CommandResponse>;
 }

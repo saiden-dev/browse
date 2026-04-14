@@ -21,6 +21,7 @@ import type {
   MetricsData,
   NetworkEntry,
   PageError,
+  PreviewCommand,
   StorageCommand,
 } from './types.js';
 
@@ -878,6 +879,62 @@ export class ClaudeBrowser {
     }
   }
 
+  private async handlePreviewCommand(cmd: PreviewCommand): Promise<CommandResponse> {
+    const page = this.ensurePage();
+
+    // Resize viewport if dimensions specified
+    if (cmd.width || cmd.height) {
+      const current = page.viewportSize();
+      const width = cmd.width || current?.width || 1280;
+      const height = cmd.height || current?.height || 800;
+      await page.setViewportSize({ width, height });
+    }
+
+    // Navigate
+    const nav = await this.goto(cmd.url);
+
+    // Screenshot
+    const outputPath = resolve(cmd.output || '/tmp/preview.png');
+    await page.screenshot({ path: outputPath, fullPage: cmd.fullPage || false });
+
+    // Optional: POST to preview endpoint
+    let posted = false;
+    if (cmd.previewUrl) {
+      posted = await this.postPreview(outputPath, cmd.previewUrl, cmd.title, cmd.caption);
+    }
+
+    return { ok: true, path: outputPath, url: nav.url, title: nav.title, posted };
+  }
+
+  /**
+   * POST a screenshot to a preview endpoint.
+   * Payload: { source: "file:///path", title, caption }
+   * Silent failure — returns false if endpoint is unreachable.
+   */
+  private async postPreview(
+    imagePath: string,
+    previewUrl: string,
+    title?: string,
+    caption?: string
+  ): Promise<boolean> {
+    try {
+      const payload = JSON.stringify({
+        source: `file://${resolve(imagePath)}`,
+        title: title || null,
+        caption: caption || null,
+      });
+      const res = await fetch(previewUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        signal: AbortSignal.timeout(3000),
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
   private async handleImportCommand(cmd: ImportCommand): Promise<CommandResponse> {
     const context = this.getContext();
     if (!context) throw new Error('Browser not launched');
@@ -1139,6 +1196,8 @@ export class ClaudeBrowser {
         }
         case 'import':
           return this.handleImportCommand(cmd);
+        case 'preview':
+          return this.handlePreviewCommand(cmd);
         default: {
           const _exhaustive: never = cmd;
           return { ok: false, error: `Unknown command: ${(_exhaustive as { cmd: string }).cmd}` };

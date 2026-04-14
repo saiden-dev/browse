@@ -347,7 +347,20 @@ export type BrowserCommand =
   | ScrollCommand
   | ViewportCommand
   | EmulateCommand
-  | ImportCommand;
+  | ImportCommand
+  | PreviewCommand;
+
+export interface PreviewCommand {
+  cmd: 'preview';
+  url: string;
+  width?: number;
+  height?: number;
+  fullPage?: boolean;
+  output?: string;
+  previewUrl?: string;
+  title?: string;
+  caption?: string;
+}
 
 // Response types
 export interface SuccessResponse {
@@ -359,6 +372,8 @@ export interface SuccessResponse {
   count?: number;
   elements?: ElementInfo[];
   result?: unknown;
+  // Preview fields
+  posted?: boolean;
   // Image processing fields
   files?: string[];
   outputDir?: string;

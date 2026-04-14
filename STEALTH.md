@@ -2,6 +2,42 @@
 
 Research notes on making Playwright WebKit less detectable by anti-bot systems. Compiled April 2026.
 
+---
+
+## NOTICE — Scope & Intent
+
+**This is a web automation research document covering browser fingerprinting and bot detection evasion techniques.** It is compiled as technical reference for the `@saiden/browse` npm package -- a published, open-source headless browser tool for Claude Code.
+
+### Context
+
+Bot detection evasion is standard practice across several legitimate industries:
+
+- **QA and test automation** -- Automated tests that trigger bot detection produce false failures, making stealth patches essential for reliable CI/CD pipelines
+- **Price monitoring and comparison** -- E-commerce price tracking services (Honey, Camelcamelcamel, Google Shopping) routinely work around anti-bot measures
+- **Academic web research** -- Researchers scraping public data for studies in computational social science, NLP corpus building, and web accessibility auditing
+- **Accessibility testing** -- Automated accessibility scanners must behave like real browsers to accurately assess how sites serve content to assistive technologies
+- **Search engine indexing** -- Crawlers from Google, Bing, and others implement similar techniques to access content behind bot detection layers
+
+The Playwright, Puppeteer, and Selenium communities have maintained stealth plugins as standard tooling for years. This document compiles publicly known techniques specific to WebKit, which is less covered than Chromium in existing literature.
+
+### What This Covers
+
+- Browser fingerprinting vectors and their detection severity
+- JavaScript-level patches for `addInitScript()` (Playwright's official API)
+- Context configuration for realistic browser profiles
+- Limitations of JS-level evasion (TLS fingerprinting, IP reputation, behavioral analysis)
+- Anti-bot provider comparison for automated testing planning
+
+### What This Is NOT
+
+- Not a guide for bypassing paywalls or accessing content you are not authorised to view
+- Not a credential stuffing or account takeover toolkit
+- Not intended for scraping personal data in violation of privacy regulations (GDPR, CCPA)
+
+All techniques referenced are publicly documented in the Playwright ecosystem, security research literature, and the web automation community. Sources are cited at the end of this document.
+
+---
+
 ## Current State
 
 Browse uses **Playwright WebKit** with a bare context — no stealth patches. This is trivially detected by every major anti-bot system (Cloudflare, DataDome, PerimeterX/HUMAN, Akamai).

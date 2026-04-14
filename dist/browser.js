@@ -769,6 +769,51 @@ export class ClaudeBrowser {
                 return { ok: false, error: 'Unknown storage action' };
         }
     }
+    async handlePreviewCommand(cmd) {
+        const page = this.ensurePage();
+        // Resize viewport if dimensions specified
+        if (cmd.width || cmd.height) {
+            const current = page.viewportSize();
+            const width = cmd.width || current?.width || 1280;
+            const height = cmd.height || current?.height || 800;
+            await page.setViewportSize({ width, height });
+        }
+        // Navigate
+        const nav = await this.goto(cmd.url);
+        // Screenshot
+        const outputPath = resolve(cmd.output || '/tmp/preview.png');
+        await page.screenshot({ path: outputPath, fullPage: cmd.fullPage || false });
+        // Optional: POST to preview endpoint
+        let posted = false;
+        if (cmd.previewUrl) {
+            posted = await this.postPreview(outputPath, cmd.previewUrl, cmd.title, cmd.caption);
+        }
+        return { ok: true, path: outputPath, url: nav.url, title: nav.title, posted };
+    }
+    /**
+     * POST a screenshot to a preview endpoint.
+     * Payload: { source: "file:///path", title, caption }
+     * Silent failure — returns false if endpoint is unreachable.
+     */
+    async postPreview(imagePath, previewUrl, title, caption) {
+        try {
+            const payload = JSON.stringify({
+                source: `file://${resolve(imagePath)}`,
+                title: title || null,
+                caption: caption || null,
+            });
+            const res = await fetch(previewUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: payload,
+                signal: AbortSignal.timeout(3000),
+            });
+            return res.ok;
+        }
+        catch {
+            return false;
+        }
+    }
     async handleImportCommand(cmd) {
         const context = this.getContext();
         if (!context)
@@ -1012,6 +1057,8 @@ export class ClaudeBrowser {
                 }
                 case 'import':
                     return this.handleImportCommand(cmd);
+                case 'preview':
+                    return this.handlePreviewCommand(cmd);
                 default: {
                     const _exhaustive = cmd;
                     return { ok: false, error: `Unknown command: ${_exhaustive.cmd}` };
