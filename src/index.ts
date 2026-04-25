@@ -1,4 +1,5 @@
 export { ClaudeBrowser } from './browser.js';
+export { BrowserServer, startServer, type ServerOptions } from './server.js';
 export {
   createFavicon,
   convert,

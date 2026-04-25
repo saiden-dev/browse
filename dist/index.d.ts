@@ -1,4 +1,5 @@
 export { ClaudeBrowser } from './browser.js';
+export { BrowserServer, startServer, type ServerOptions } from './server.js';
 export { createFavicon, convert, resize, crop, compress, thumbnail, type FaviconResult, type ImageResult, type FitType, type FormatType, type ThumbnailSize, } from './image.js';
 export type { BrowserOptions, BrowserCommand, CommandResponse, ElementInfo, SuccessResponse, ErrorResponse, GotoCommand, ClickCommand, TypeCommand, QueryCommand, ScreenshotCommand, UrlCommand, HtmlCommand, BackCommand, ForwardCommand, ReloadCommand, WaitCommand, NewPageCommand, CloseCommand, EvalCommand, FaviconCommand, ConvertCommand, ResizeCommand, CropCommand, CompressCommand, ThumbnailCommand, } from './types.js';
 //# sourceMappingURL=index.d.ts.map

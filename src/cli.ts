@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { ClaudeBrowser } from './browser.js';
 import * as image from './image.js';
+import { startServer } from './server.js';
 import type { ElementInfo } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,6 +28,7 @@ const { values, positionals } = parseArgs({
     json: { type: 'boolean', short: 'j', default: false },
     click: { type: 'string', short: 'c', multiple: true },
     type: { type: 'string', short: 't', multiple: true },
+    server: { type: 'string', short: 's' },
     help: { type: 'boolean', default: false },
     version: { type: 'boolean', short: 'v', default: false },
     // Image processing options
@@ -55,6 +57,7 @@ Options:
   -j, --json              Output query results as JSON
   -c, --click <selector>  Click on element (can be repeated for multiple clicks)
   -t, --type <sel>=<text> Type text into input (can be repeated)
+  -s, --server <port>     Start HTTP server mode (default port: 13373)
   -v, --version           Show version
   --help                  Show this help
 
@@ -81,6 +84,10 @@ Image processing examples:
   browse https://example.com -o page.webp --convert webp
   browse https://example.com --resize 800x600
   browse https://example.com --compress 60
+
+Server mode:
+  browse -s 13373                           # Start HTTP server on port 13373
+  curl localhost:13373 -d '{"cmd":"goto","url":"https://example.com"}'
 
 MCP Server (for Claude Code integration):
   browse-mcp                        # Run as MCP server (stdio transport)
@@ -244,6 +251,12 @@ async function main(): Promise<void> {
   if (values.help) {
     console.log(HELP);
     process.exit(0);
+  }
+
+  if (values.server !== undefined) {
+    const port = Number.parseInt(values.server as string) || 13373;
+    await startServer({ port });
+    return;
   }
 
   if (positionals.length === 0) {
